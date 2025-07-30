@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Clientes - Sistema de Agua</title>
+    <link rel="stylesheet" href="../css/clientes.css">
+    <link rel="icon" href="../images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>👥 Gestión de Clientes</h1>
+            <a href="mainPage.html" class="back-btn">← Volver al Inicio</a>
+        </header>
+
+        <main class="main-content">
+            <!-- Sección del Formulario -->
+            <section class="form-section">
+                <h2 class="section-title">Registro de Cliente</h2>
+                
+                <div id="message" class="message"></div>
+
+                <form id="clientForm">
+                    <!-- Información Personal -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="nombres">Nombres *</label>
+                            <input type="text" id="nombres" name="nombres" required
+                                   minlength="2" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="apellidos">Apellidos *</label>
+                            <input type="text" id="apellidos" name="apellidos" required
+                                   minlength="2" maxlength="50">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="dpi">No. de DPI *</label>
+                            <input type="text" id="dpi" name="dpi" required maxlength="13" 
+                                   placeholder="1234567890123"
+                                   title="Debe tener exactamente 13 dígitos">
+                        </div>
+                        <div class="form-group">
+                            <label for="whatsapp">No. de WhatsApp</label>
+                            <input type="text" id="whatsapp" name="whatsapp" maxlength="8"
+                                   placeholder="12345678"
+                                   title="Número de WhatsApp (8 dígitos)">
+                        </div>
+                    </div>
+
+                    <!-- Información de Contacto -->
+                    <div class="form-group full-width">
+                        <label for="correoElectronico">Correo Electrónico</label>
+                        <input type="email" id="correoElectronico" name="correoElectronico"
+                               placeholder="cliente@ejemplo.com"
+                               title="Correo electrónico opcional">
+                    </div>
+
+                    <!-- Información del Servicio -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="contador">No. de Contador *</label>
+                            <input type="text" id="contador" name="contador" required 
+                                   placeholder="CTR-001" maxlength="20"
+                                   title="Número único de contador">
+                        </div>
+                        <div class="form-group">
+                            <label for="lote">No. de Lote *</label>
+                            <input type="text" id="lote" name="lote" required 
+                                   placeholder="LT-001" maxlength="20"
+                                   title="Número de lote">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="proyecto">Proyecto *</label>
+                        <select id="proyecto" name="proyecto" required>
+                            <option value="">Seleccione un proyecto</option>
+                            <option value="san-miguel">San Miguel</option>
+                            <option value="santa-clara-1">Santa Clara Fase 1</option>
+                            <option value="santa-clara-2">Santa Clara Fase 2</option>
+                            <option value="cabanas-1">Cabañas Fase 1</option>
+                            <option value="cabanas-2">Cabañas Fase 2</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        <span id="btnText">💾 Registrar Cliente</span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Sección de Lista de Clientes -->
+            <section class="clients-list-section">
+                <h2 class="section-title">Lista de Clientes</h2>
+                
+                <div class="search-filter-section">
+                    <input type="text" id="searchBox" class="search-box" 
+                           placeholder="🔍 Buscar por nombre, DPI, contador o proyecto...">
+                    
+                    <div class="filter-row">
+                        <select id="projectFilter" class="filter-select" title="Filtrar por proyecto">
+                            <option value="">Todos los proyectos</option>
+                            <option value="san-miguel">San Miguel</option>
+                            <option value="santa-clara-1">Santa Clara Fase 1</option>
+                            <option value="santa-clara-2">Santa Clara Fase 2</option>
+                            <option value="cabanas-1">Cabañas Fase 1</option>
+                            <option value="cabanas-2">Cabañas Fase 2</option>
+                        </select>
+                        
+                        <button type="button" id="refreshBtn" class="refresh-btn" title="Actualizar lista">
+                            🔄 Actualizar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="clients-table-wrapper">
+                    <table class="clients-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre Completo</th>
+                                <th>DPI</th>
+                                <th>Contador</th>
+                                <th>Lote</th>
+                                <th>Proyecto</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientsTableBody">
+                            <tr>
+                                <td colspan="7" class="loading-cell">
+                                    <div class="loading-spinner">
+                                        🔄 Cargando clientes...
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Información de paginación -->
+                <div class="pagination-info hidden" id="paginationInfo">
+                    <span id="recordsInfo">Mostrando 0 de 0 clientes</span>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal de edición de cliente -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>✏️ Editar Cliente</h3>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="editForm">
+                    <!-- Información Personal -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editNombres">Nombres *</label>
+                            <input type="text" id="editNombres" name="nombres" required
+                                   minlength="2" maxlength="50">
+                        </div>
+                        <div class="form-group">
+                            <label for="editApellidos">Apellidos *</label>
+                            <input type="text" id="editApellidos" name="apellidos" required
+                                   minlength="2" maxlength="50">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editDpi">No. de DPI *</label>
+                            <input type="text" id="editDpi" name="dpi" required maxlength="13" 
+                                   placeholder="1234567890123"
+                                   title="Debe tener exactamente 13 dígitos">
+                        </div>
+                        <div class="form-group">
+                            <label for="editWhatsapp">No. de WhatsApp</label>
+                            <input type="text" id="editWhatsapp" name="whatsapp" maxlength="8"
+                                   placeholder="12345678"
+                                   title="Número de WhatsApp (8 dígitos)">
+                        </div>
+                    </div>
+
+                    <!-- Información de Contacto -->
+                    <div class="form-group full-width">
+                        <label for="editCorreoElectronico">Correo Electrónico</label>
+                        <input type="email" id="editCorreoElectronico" name="correoElectronico"
+                               placeholder="cliente@ejemplo.com"
+                               title="Correo electrónico opcional">
+                    </div>
+
+                    <!-- Información del Servicio -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="editContador">No. de Contador *</label>
+                            <input type="text" id="editContador" name="contador" required 
+                                   placeholder="CTR-001" maxlength="20"
+                                   title="Número único de contador">
+                        </div>
+                        <div class="form-group">
+                            <label for="editLote">No. de Lote *</label>
+                            <input type="text" id="editLote" name="lote" required 
+                                   placeholder="LT-001" maxlength="20"
+                                   title="Número de lote">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editProyecto">Proyecto *</label>
+                        <select id="editProyecto" name="proyecto" required>
+                            <option value="">Seleccione un proyecto</option>
+                            <option value="san-miguel">San Miguel</option>
+                            <option value="santa-clara-1">Santa Clara Fase 1</option>
+                            <option value="santa-clara-2">Santa Clara Fase 2</option>
+                            <option value="cabanas-1">Cabañas Fase 1</option>
+                            <option value="cabanas-2">Cabañas Fase 2</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" id="cancelEditBtn" class="btn-secondary">Cancelar</button>
+                        <button type="submit" class="btn-primary">💾 Actualizar Cliente</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación (opcional) -->
+    <div id="confirmModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Confirmar acción</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="modalMessage">¿Estás seguro de realizar esta acción?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="cancelBtn" class="btn-secondary">Cancelar</button>
+                <button type="button" id="confirmBtn" class="btn-danger">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts externos -->
+    <script src="../js/auth.js"></script>
+    <script src="../js/pageProtection.js"></script>
+    <script src="../js/clientes.js"></script>
+</body>
+</html>

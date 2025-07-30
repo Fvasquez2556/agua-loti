@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Pagos - Sistema de Agua</title>
+    <link rel="stylesheet" href="../css/pagos.css">
+    <link rel="icon" href="../images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>💰 Control de Pagos</h1>
+            <a href="mainPage.html" class="back-btn">← Volver al Inicio</a>
+        </header>
+
+        <main class="main-content">
+            <!-- Sección de Registro de Pagos -->
+            <section class="payment-form-section">
+                <h2 class="section-title">Registrar Pago</h2>
+                
+                <div id="message" class="message"></div>
+
+                <form id="paymentForm">
+                    <!-- Selección de Cliente para ver sus facturas pendientes -->
+                    <div class="form-group">
+                        <label for="clienteSelect">Cliente *</label>
+                        <select id="clienteSelect" name="cliente" required>
+                            <option value="">Seleccione un cliente</option>
+                        </select>
+                    </div>
+
+                    <!-- Facturas pendientes del cliente seleccionado -->
+                    <div class="form-group hidden" id="pendingInvoicesSection">
+                        <label for="facturaSelect">Factura a Pagar *</label>
+                        <select id="facturaSelect" name="factura" required>
+                            <option value="">Seleccione una factura</option>
+                        </select>
+                    </div>
+
+                    <!-- Información de la factura seleccionada -->
+                    <div class="invoice-info hidden" id="invoiceInfo">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="facturaNumero">No. Factura</label>
+                                <input type="text" id="facturaNumero" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="facturaFecha">Fecha Factura</label>
+                                <input type="text" id="facturaFecha" readonly>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="montoTotal">Monto Total</label>
+                                <input type="text" id="montoTotal" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label for="montoPendiente">Monto Pendiente</label>
+                                <input type="text" id="montoPendiente" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos del pago -->
+                    <div class="payment-details hidden" id="paymentDetails">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="montoPago">Monto del Pago *</label>
+                                <input type="number" id="montoPago" name="montoPago" 
+                                       step="0.01" min="0" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="fechaPago">Fecha del Pago *</label>
+                                <input type="date" id="fechaPago" name="fechaPago" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="metodoPago">Método de Pago *</label>
+                                <select id="metodoPago" name="metodoPago" required>
+                                    <option value="">Seleccione método</option>
+                                    <option value="efectivo">Efectivo</option>
+                                    <option value="transferencia">Transferencia</option>
+                                    <option value="deposito">Depósito</option>
+                                    <option value="cheque">Cheque</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="referencia">Referencia/Comprobante</label>
+                                <input type="text" id="referencia" name="referencia" 
+                                       placeholder="No. de comprobante, cheque, etc.">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="observaciones">Observaciones</label>
+                            <textarea id="observaciones" name="observaciones" rows="3" 
+                                    placeholder="Comentarios adicionales..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn-primary">
+                            💰 Registrar Pago
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Sección de Facturas Pendientes -->
+            <section class="pending-invoices-section">
+                <h2 class="section-title">Facturas Pendientes</h2>
+                
+                <!-- Filtros -->
+                <div class="filters-section">
+                    <input type="text" id="searchPending" class="search-box" 
+                           placeholder="🔍 Buscar por cliente, factura o proyecto...">
+                    
+                    <div class="filter-row">
+                        <select id="projectFilter" title="Filtrar por proyecto" aria-label="Filtrar facturas por proyecto">
+                            <option value="">Todos los proyectos</option>
+                            <option value="san-miguel">San Miguel</option>
+                            <option value="santa-clara-1">Santa Clara Fase 1</option>
+                            <option value="santa-clara-2">Santa Clara Fase 2</option>
+                            <option value="cabanas-1">Cabañas Fase 1</option>
+                            <option value="cabanas-2">Cabañas Fase 2</option>
+                        </select>
+                        
+                        <select id="ageFilter" title="Filtrar por antigüedad" aria-label="Filtrar facturas por antigüedad">
+                            <option value="">Todas las edades</option>
+                            <option value="current">Mes actual</option>
+                            <option value="30days">Más de 30 días</option>
+                            <option value="60days">Más de 60 días</option>
+                            <option value="90days">Más de 90 días</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Resumen de pendientes -->
+                <div class="pending-summary">
+                    <div class="summary-card">
+                        <div class="summary-number" id="totalPendingCount">0</div>
+                        <div class="summary-label">Facturas Pendientes</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-number" id="totalPendingAmount">Q 0.00</div>
+                        <div class="summary-label">Monto Total Pendiente</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-number" id="overdueCount">0</div>
+                        <div class="summary-label">Facturas Vencidas</div>
+                    </div>
+                </div>
+
+                <!-- Tabla de facturas pendientes -->
+                <div class="table-wrapper">
+                    <table class="pending-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>No. Factura</th>
+                                <th>Fecha</th>
+                                <th>Vencimiento</th>
+                                <th>Monto</th>
+                                <th>Días Vencido</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingTableBody">
+                            <!-- Los datos se cargarán dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Sección de Historial de Pagos -->
+            <section class="payment-history-section">
+                <h2 class="section-title">Historial de Pagos</h2>
+                
+                <input type="text" id="searchPayments" class="search-box" 
+                       placeholder="🔍 Buscar en historial de pagos...">
+
+                <div class="table-wrapper">
+                    <table class="payments-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha Pago</th>
+                                <th>Cliente</th>
+                                <th>No. Factura</th>
+                                <th>Monto</th>
+                                <th>Método</th>
+                                <th>Referencia</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentsTableBody">
+                            <!-- Los datos se cargarán dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal para ver detalles del pago -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Detalles del Pago</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body" id="paymentDetails-modal">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts externos -->
+    <script src="../js/auth.js"></script>
+    <script src="../js/pageProtection.js"></script>
+    <script src="../js/pagos.js"></script>
+</body>
+</html>

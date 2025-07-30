@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generar Factura - Sistema de Agua</title>
+    <link rel="stylesheet" href="../css/factura.css">
+    <script src="../js/auth.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📄 Generar Factura</h1>
+            <a href="mainPage.html" class="back-btn">← Volver al Inicio</a>
+        </header>
+
+        <main class="main-content">
+            <!-- Sección del Formulario -->
+            <section class="invoice-form-section">
+                <h2 class="section-title">Datos de Facturación</h2>
+                
+                <div id="message" class="message"></div>
+
+                <form id="invoiceForm">
+                    <!-- Selección de Cliente -->
+                    <div class="form-group">
+                        <label for="clienteSelect">Cliente *</label>
+                        <select id="clienteSelect" name="cliente" required>
+                            <option value="">Seleccione un cliente</option>
+                        </select>
+                    </div>
+
+                    <!-- Información del Cliente (se llena automáticamente) -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="clienteNombre">Nombre Completo</label>
+                            <input type="text" id="clienteNombre" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="clienteProyecto">Proyecto</label>
+                            <input type="text" id="clienteProyecto" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="clienteContador">No. Contador</label>
+                            <input type="text" id="clienteContador" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="clienteLote">No. Lote</label>
+                            <input type="text" id="clienteLote" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Datos de Consumo -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="lecturaAnterior">Lectura Anterior</label>
+                            <input type="number" id="lecturaAnterior" name="lecturaAnterior" 
+                                   step="0.01" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="lecturaActual">Lectura Actual *</label>
+                            <input type="number" id="lecturaActual" name="lecturaActual" 
+                                   step="0.01" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="consumoCalculado">Consumo (m³)</label>
+                            <input type="number" id="consumoCalculado" readonly step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label for="fechaLectura">Fecha de Lectura *</label>
+                            <input type="date" id="fechaLectura" name="fechaLectura" required>
+                        </div>
+                    </div>
+
+                    <!-- Tarifas -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tarifaBase">Tarifa Base (Q)</label>
+                            <input type="number" id="tarifaBase" name="tarifaBase" 
+                                   step="0.01" value="15.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="precioPorM3">Precio por m³ (Q)</label>
+                            <input type="number" id="precioPorM3" name="precioPorM3" 
+                                   step="0.01" value="2.50">
+                        </div>
+                    </div>
+
+                    <!-- Monto Total -->
+                    <div class="form-group">
+                        <label for="montoTotal">Monto Total (Q)</label>
+                        <input type="number" id="montoTotal" readonly step="0.01">
+                    </div>
+
+                    <!-- Período de Facturación -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="periodoInicio">Período Desde</label>
+                            <input type="date" id="periodoInicio" name="periodoInicio" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="periodoFin">Período Hasta</label>
+                            <input type="date" id="periodoFin" name="periodoFin" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        📄 Generar Factura
+                    </button>
+                </form>
+
+                <!-- Historial de Lecturas -->
+                <div class="reading-history" id="readingHistory">
+                    <h4>📊 Historial de Lecturas</h4>
+                    <div id="historyList">
+                        <p>Seleccione un cliente para ver el historial</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección de Vista Previa -->
+            <section class="invoice-preview-section">
+                <h2 class="section-title">Vista Previa de Factura</h2>
+                
+                <div class="invoice-preview" id="invoicePreview">
+                    <div class="invoice-header">
+                        <h2>💧 SISTEMA DE AGUA LOTI</h2>
+                        <p>Factura de Servicio de Agua</p>
+                        <p>NIT: 12345678-9</p>
+                        <p>Dirección: Ciudad de Guatemala</p>
+                        <p>Teléfono: (502) 2234-5678</p>
+                    </div>
+
+                    <div class="invoice-details">
+                        <div class="invoice-section">
+                            <h4>Datos del Cliente</h4>
+                            <p><strong>Nombre:</strong> <span id="preview-nombre">-</span></p>
+                            <p><strong>Proyecto:</strong> <span id="preview-proyecto">-</span></p>
+                            <p><strong>No. Contador:</strong> <span id="preview-contador">-</span></p>
+                            <p><strong>No. Lote:</strong> <span id="preview-lote">-</span></p>
+                        </div>
+                        
+                        <div class="invoice-section">
+                            <h4>Datos de Facturación</h4>
+                            <p><strong>No. Factura:</strong> <span id="preview-factura">-</span></p>
+                            <p><strong>Fecha:</strong> <span id="preview-fecha">-</span></p>
+                            <p><strong>Período:</strong> <span id="preview-periodo">-</span></p>
+                            <p><strong>Fecha Límite:</strong> <span id="preview-limite">-</span></p>
+                        </div>
+                    </div>
+
+                    <table class="invoice-table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>Cantidad</th>
+                                <th>Precio Unit.</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoice-items">
+                            <tr>
+                                <td colspan="4" class="invoice-empty-cell">
+                                    Complete el formulario para generar la factura
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="invoice-total" id="invoice-totals">
+                        <!-- Los totales se llenarán dinámicamente -->
+                    </div>
+                </div>
+
+                <div class="print-section">
+                    <button type="button" class="btn-secondary" onclick="printInvoice()">
+                        🖨️ Imprimir Factura
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="downloadPDF()">
+                        📁 Descargar PDF
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Scripts externos -->
+    <script src="../js/factura.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/pageProtection.js"></script>
+</body>
+</html>

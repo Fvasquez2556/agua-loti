@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard & Reportes - Sistema de Agua</title>
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="icon" href="../images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📊 Dashboard & Reportes</h1>
+            <a href="mainPage.html" class="back-btn">← Volver al Inicio</a>
+        </header>
+
+        <main class="main-content">
+            <!-- Sección de Estadísticas Principales -->
+            <section class="stats-overview">
+                <div class="stat-card primary">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="totalClientes">0</div>
+                        <div class="stat-label">Total Clientes</div>
+                        <div class="stat-change positive" id="clientesChange">+0 este mes</div>
+                    </div>
+                </div>
+
+                <div class="stat-card success">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="ingresosMes">Q 0.00</div>
+                        <div class="stat-label">Ingresos del Mes</div>
+                        <div class="stat-change positive" id="ingresosChange">+0% vs mes anterior</div>
+                    </div>
+                </div>
+
+                <div class="stat-card warning">
+                    <div class="stat-icon">📄</div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="facturasPendientes">0</div>
+                        <div class="stat-label">Facturas Pendientes</div>
+                        <div class="stat-change negative" id="pendientesChange">Q 0.00 por cobrar</div>
+                    </div>
+                </div>
+
+                <div class="stat-card danger">
+                    <div class="stat-icon">⚠️</div>
+                    <div class="stat-content">
+                        <div class="stat-number" id="facturasVencidas">0</div>
+                        <div class="stat-label">Facturas Vencidas</div>
+                        <div class="stat-change negative" id="vencidasChange">+0 días promedio</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección de Gráficos y Análisis -->
+            <section class="charts-section">
+                <!-- Gráfico de Ingresos Mensuales -->
+                <div class="chart-container">
+                    <h3 class="chart-title">📈 Ingresos Mensuales (Últimos 6 meses)</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="ingresosChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráfico de Consumo por Proyecto -->
+                <div class="chart-container">
+                    <h3 class="chart-title">🏘️ Consumo por Proyecto</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="proyectosChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Estado de Pagos -->
+                <div class="chart-container">
+                    <h3 class="chart-title">💳 Estado de Pagos</h3>
+                    <div class="payment-status-grid">
+                        <div class="payment-status-item">
+                            <div class="status-circle pagadas"></div>
+                            <div class="status-info">
+                                <span class="status-number" id="facturasPagadas">0</span>
+                                <span class="status-label">Pagadas</span>
+                            </div>
+                        </div>
+                        <div class="payment-status-item">
+                            <div class="status-circle pendientes"></div>
+                            <div class="status-info">
+                                <span class="status-number" id="facturasPendientesChart">0</span>
+                                <span class="status-label">Pendientes</span>
+                            </div>
+                        </div>
+                        <div class="payment-status-item">
+                            <div class="status-circle vencidas"></div>
+                            <div class="status-info">
+                                <span class="status-number" id="facturasVencidasChart">0</span>
+                                <span class="status-label">Vencidas</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección de Reportes Rápidos -->
+            <section class="reports-section">
+                <h3 class="section-title">📋 Reportes Rápidos</h3>
+                
+                <div class="reports-grid">
+                    <!-- Top Consumidores -->
+                    <div class="report-card">
+                        <h4 class="report-title">🔝 Top 5 Consumidores</h4>
+                        <div class="report-content" id="topConsumidores">
+                            <div class="loading">Cargando datos...</div>
+                        </div>
+                    </div>
+
+                    <!-- Clientes Morosos -->
+                    <div class="report-card">
+                        <h4 class="report-title">⚠️ Clientes con Facturas Vencidas</h4>
+                        <div class="report-content" id="clientesMorosos">
+                            <div class="loading">Cargando datos...</div>
+                        </div>
+                    </div>
+
+                    <!-- Consumo por Proyecto -->
+                    <div class="report-card">
+                        <h4 class="report-title">🏘️ Consumo por Proyecto</h4>
+                        <div class="report-content" id="consumoPorProyecto">
+                            <div class="loading">Cargando datos...</div>
+                        </div>
+                    </div>
+
+                    <!-- Pagos Recientes -->
+                    <div class="report-card">
+                        <h4 class="report-title">💰 Últimos Pagos Recibidos</h4>
+                        <div class="report-content" id="pagosRecientes">
+                            <div class="loading">Cargando datos...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sección de Filtros y Exportación -->
+            <section class="filters-export-section">
+                <h3 class="section-title">🔍 Filtros y Exportación</h3>
+                
+                <div class="filters-container">
+                    <div class="filter-group">
+                        <label for="dateFrom">Desde:</label>
+                        <input type="date" id="dateFrom" class="filter-input">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="dateTo">Hasta:</label>
+                        <input type="date" id="dateTo" class="filter-input">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="projectFilter">Proyecto:</label>
+                        <select id="projectFilter" class="filter-input">
+                            <option value="">Todos los proyectos</option>
+                            <option value="san-miguel">San Miguel</option>
+                            <option value="santa-clara-1">Santa Clara Fase 1</option>
+                            <option value="santa-clara-2">Santa Clara Fase 2</option>
+                            <option value="cabanas-1">Cabañas Fase 1</option>
+                            <option value="cabanas-2">Cabañas Fase 2</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <button class="filter-btn" onclick="applyFilters()">
+                            🔍 Filtrar
+                        </button>
+                        <button class="filter-btn secondary" onclick="resetFilters()">
+                            🔄 Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="export-container">
+                    <h4>📤 Exportar Reportes</h4>
+                    <div class="export-buttons">
+                        <button class="export-btn" onclick="exportData('clientes')">
+                            👥 Exportar Clientes
+                        </button>
+                        <button class="export-btn" onclick="exportData('facturas')">
+                            📄 Exportar Facturas
+                        </button>
+                        <button class="export-btn" onclick="exportData('pagos')">
+                            💰 Exportar Pagos
+                        </button>
+                        <button class="export-btn" onclick="exportData('completo')">
+                            📊 Reporte Completo
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tabla de Datos Detallados -->
+            <section class="detailed-data-section">
+                <h3 class="section-title">📋 Datos Detallados</h3>
+                
+                <div class="data-tabs">
+                    <button class="tab-btn active" onclick="showTab('clientes')">Clientes</button>
+                    <button class="tab-btn" onclick="showTab('facturas')">Facturas</button>
+                    <button class="tab-btn" onclick="showTab('pagos')">Pagos</button>
+                </div>
+
+                <div class="search-container">
+                    <input type="text" id="dataSearch" class="search-input" 
+                           placeholder="🔍 Buscar en datos...">
+                </div>
+
+                <!-- Tabla de Clientes -->
+                <div id="clientesTab" class="data-tab active">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>DPI</th>
+                                    <th>Contador</th>
+                                    <th>Proyecto</th>
+                                    <th>Facturas</th>
+                                    <th>Total Facturado</th>
+                                    <th>Total Pagado</th>
+                                    <th>Pendiente</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientesTableBody">
+                                <!-- Datos dinámicos -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla de Facturas -->
+                <div id="facturasTab" class="data-tab">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>No. Factura</th>
+                                    <th>Cliente</th>
+                                    <th>Fecha</th>
+                                    <th>Consumo (m³)</th>
+                                    <th>Monto</th>
+                                    <th>Estado</th>
+                                    <th>Días Vencimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody id="facturasTableBody">
+                                <!-- Datos dinámicos -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla de Pagos -->
+                <div id="pagosTab" class="data-tab">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Cliente</th>
+                                    <th>No. Factura</th>
+                                    <th>Monto</th>
+                                    <th>Método</th>
+                                    <th>Referencia</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pagosTableBody">
+                                <!-- Datos dinámicos -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Scripts externos -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/pageProtection.js"></script>
+    <script src="../js/dashboard.js"></script>
+</body>
+</html>

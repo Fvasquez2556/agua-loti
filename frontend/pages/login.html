@@ -1,0 +1,43 @@
+<!-- frontend/pages/login.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Agua LOTI</title>
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <h2>💧 Agua LOTI</h2>
+      <p>Ingreso al sistema</p>
+    </div>
+    
+    <form id="loginForm" class="login-form">
+      <div class="form-group">
+        <input type="text" id="username" placeholder="Usuario" required autocomplete="username" />
+      </div>
+      
+      <div class="form-group">
+        <input type="password" id="password" placeholder="Contraseña" required autocomplete="current-password" />
+      </div>
+      
+      <button type="submit" class="login-btn">
+        Ingresar
+      </button>
+      
+      <p id="errorMsg" class="error-msg"></p>
+    </form>
+    
+    <div class="login-footer">
+      <p>Sistema de Gestión de Agua LOTI</p>
+      <small>&copy; 2025 - Todos los derechos reservados</small>
+    </div>
+  </div>
+
+  <!-- Scripts de autenticación -->
+  <script src="../js/auth.js"></script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

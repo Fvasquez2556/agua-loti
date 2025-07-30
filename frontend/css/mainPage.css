@@ -1,0 +1,295 @@
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: clamp(10px, 3vw, 20px);
+            margin: 0;
+            /* Asegurar que no haya scroll horizontal */
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: min(1400px, 95vw);
+            margin: 0 auto;
+            background: white;
+            border-radius: clamp(10px, 2vw, 20px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            /* Asegurar que el contenedor tenga altura mínima */
+            min-height: calc(100vh - 40px);
+            /* Hacer que el contenedor sea flexible */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: clamp(20px, 4vw, 30px);
+            text-align: center;
+            position: relative;
+            /* Asegurar que el header esté siempre visible */
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: clamp(1rem, 2.5vw, 1.1rem);
+            opacity: 0.9;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-weight: 500;
+            z-index: 11;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            padding: 40px;
+            flex: 1;
+            /* Permitir scroll solo en el contenido principal si es necesario */
+            overflow-y: auto;
+        }
+
+        .welcome-section {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .welcome-section h2 {
+            color: #333;
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .welcome-section p {
+            color: #666;
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: clamp(15px, 3vw, 30px);
+            margin-bottom: 40px;
+        } 
+
+        .module-card {
+            background: white;
+            border-radius: 15px;
+            padding: clamp(20px, 4vw, 30px);
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            position: relative;
+            overflow: hidden;
+            /* Asegurar altura mínima para consistencia */
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s;
+        }
+
+        .module-card:hover::before {
+            left: 100%;
+        }
+
+        .module-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            border-color: #4facfe;
+        }
+
+        .module-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            color: white;
+            position: relative;
+            z-index: 1;
+        }
+
+        .module-card.factura .module-icon {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+        }
+
+        .module-card.clientes .module-icon {
+            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+        }
+
+        .module-card.pagos .module-icon {
+            background: linear-gradient(135deg, #45b7d1, #96c93d);
+        }
+
+        .module-card.reportes .module-icon {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        .module-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .module-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .module-features {
+            list-style: none;
+            text-align: left;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+
+        .module-features li {
+            color: #777;
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .module-features li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4facfe;
+            font-weight: bold;
+        }
+
+        .stats-section {
+            margin-top: 50px;
+            padding: 30px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+        }
+
+        .stats-title {
+            text-align: center;
+            color: #333;
+            font-size: 1.8rem;
+            margin-bottom: 30px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4facfe;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive design mejorado */
+        @media (max-width: 768px) {
+            .container {
+                margin: 5px;
+                min-height: calc(100vh - 10px);
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .modules-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .logout-btn {
+                position: static;
+                display: block;
+                margin: 10px auto 20px;
+                width: fit-content;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+        }
+
+        /* Asegurar que el scroll funcione correctamente */
+        html {
+            scroll-behavior: smooth;
+        }

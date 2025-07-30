@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Agua - Panel Principal</title>
+    <link rel="stylesheet" href="../css/mainPage.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <a href="#" class="logout-btn" id="logoutBtn">Cerrar Sesión</a>
+            <h1>💧 Sistema de Agua LOTI</h1>
+            <p>Panel de Administración - Gestión Integral de Servicios</p>
+        </header>
+
+        <main class="main-content">
+            <section class="welcome-section">
+                <h2>Bienvenido al Sistema</h2>
+                <p>Administra de manera eficiente todos los aspectos del servicio de agua. 
+                   Desde la gestión de clientes hasta la generación de facturas y reportes.</p>
+            </section>
+
+            <section class="modules-grid">
+                <!-- Módulo de Facturación -->
+                <a href="factura.html" class="module-card factura">
+                    <div>
+                        <div class="module-icon">📄</div>
+                        <h3 class="module-title">Generar Factura</h3>
+                        <p class="module-description">
+                            Sistema completo de facturación con generación automática de PDF 
+                            para impresión térmica.
+                        </p>
+                    </div>
+                    <ul class="module-features">
+                        <li>Registro de pagos</li>
+                        <li>Cálculo automático de tarifas</li>
+                        <li>Generación de PDF</li>
+                        <li>Impresión térmica</li>
+                        <li>Historial de facturas</li>
+                    </ul>
+                </a>
+
+                <!-- Módulo de Clientes -->
+                <a href="clientes.html" class="module-card clientes">
+                    <div>
+                        <div class="module-icon">👥</div>
+                        <h3 class="module-title">Gestión de Clientes</h3>
+                        <p class="module-description">
+                            Administra la información completa de todos los clientes 
+                            del sistema de agua.
+                        </p>
+                    </div>
+                    <ul class="module-features">
+                        <li>Registro de nuevos clientes</li>
+                        <li>Datos personales completos</li>
+                        <li>Información de contadores</li>
+                        <li>Asignación por proyectos</li>
+                        <li>Búsqueda y filtros</li>
+                    </ul>
+                </a>
+
+                <!-- Módulo de Pagos -->
+                <a href="pagos.html" class="module-card pagos">
+                    <div>
+                        <div class="module-icon">💰</div>
+                        <h3 class="module-title">Control de Pagos</h3>
+                        <p class="module-description">
+                            Monitorea y gestiona todos los pagos realizados por los clientes 
+                            del servicio.
+                        </p>
+                    </div>
+                    <ul class="module-features">
+                        <li>Registro de pagos</li>
+                        <li>Estados de cuenta</li>
+                        <li>Pagos pendientes</li>
+                        <li>Historial de transacciones</li>
+                        <li>Reportes de cobranza</li>
+                    </ul>
+                </a>
+
+                <!-- Módulo de Dashboard/Reportes -->
+                <a href="dashboard.html" class="module-card reportes">
+                    <div>
+                        <div class="module-icon">📊</div>
+                        <h3 class="module-title">Dashboard & Reportes</h3>
+                        <p class="module-description">
+                            Visualiza estadísticas y genera reportes detallados 
+                            del sistema.
+                        </p>
+                    </div>
+                    <ul class="module-features">
+                        <li>Estadísticas generales</li>
+                        <li>Gráficos y métricas</li>
+                        <li>Reportes por proyecto</li>
+                        <li>Análisis de ingresos</li>
+                        <li>Exportación de datos</li>
+                    </ul>
+                </a>
+            </section>
+
+            <!-- Sección de Estadísticas Rápidas -->
+            <section class="stats-section">
+                <h3 class="stats-title">Estadísticas del Sistema</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalClientes">127</div>
+                        <div class="stat-label">Total Clientes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="facturasMes">89</div>
+                        <div class="stat-label">Facturas este Mes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="pagosPendientes">23</div>
+                        <div class="stat-label">Pagos Pendientes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="ingresosMes">Q15,420</div>
+                        <div class="stat-label">Ingresos del Mes</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../js/auth.js"></script>
+    <script src="../js/pageProtection.js"></script>
+
+    <script>
+        // Verificar autenticación (simulado)
+        const token = localStorage.getItem("token") || "demo_token";
+        if (!token) {
+            console.log("Redirigiendo a login...");
+        }
+
+        // Función para cerrar sesión
+        document.getElementById('logoutBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+                localStorage.removeItem("token");
+                alert('Sesión cerrada. Redirigiendo al login...');
+                // window.location.href = "login.html"; // Descomenta cuando tengas login.html
+            }
+        });
+
+        // Agregar efectos de hover y animaciones mejorados
+        document.querySelectorAll('.module-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-10px) scale(1.02)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Animación de entrada para las estadísticas
+        document.addEventListener('DOMContentLoaded', function() {
+            const statNumbers = document.querySelectorAll('.stat-number');
+            statNumbers.forEach(stat => {
+                stat.style.opacity = '0';
+                stat.style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    stat.style.transition = 'all 0.6s ease';
+                    stat.style.opacity = '1';
+                    stat.style.transform = 'translateY(0)';
+                }, Math.random() * 500);
+            });
+
+            // Cargar estadísticas reales desde localStorage
+            loadRealStats();
+        });
+
+        // Función para cargar estadísticas reales
+        function loadRealStats() {
+            try {
+                // Cargar clientes
+                const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+                document.getElementById('totalClientes').textContent = clientes.length;
+
+                // Cargar facturas del mes actual
+                const facturas = JSON.parse(localStorage.getItem('facturas') || '[]');
+                const currentMonth = new Date().getMonth();
+                const currentYear = new Date().getFullYear();
+                
+                const facturasMes = facturas.filter(f => {
+                    const facturaDate = new Date(f.fecha);
+                    return facturaDate.getMonth() === currentMonth && 
+                           facturaDate.getFullYear() === currentYear;
+                });
+                document.getElementById('facturasMes').textContent = facturasMes.length;
+
+                // Calcular pagos pendientes (facturas con estado pendiente)
+                const pagosPendientes = facturas.filter(f => f.estado === 'pendiente').length;
+                document.getElementById('pagosPendientes').textContent = pagosPendientes;
+
+                // Calcular ingresos del mes
+                const ingresosMes = facturasMes.reduce((total, f) => total + (f.montoTotal || 0), 0);
+                document.getElementById('ingresosMes').textContent = `Q${ingresosMes.toFixed(2)}`;
+
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+            }
+        }
+
+        // Asegurar que la página se cargue correctamente desde arriba
+        window.addEventListener('load', function() {
+            window.scrollTo(0, 0);
+        });
+
+        // Actualizar estadísticas cada 30 segundos
+        setInterval(loadRealStats, 30000);
+    </script>
+</body>
+</html>
