@@ -219,7 +219,31 @@ exports.createFactura = async (req, res) => {
       creadoPor: req.user.id
     });
 
-    await factura.save();
+    // Intentar guardar la factura con reintentos en caso de duplicado
+    let saved = false;
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (!saved && attempts < maxAttempts) {
+      try {
+        await factura.save();
+        saved = true;
+      } catch (saveError) {
+        if (saveError.code === 11000 && saveError.keyPattern && saveError.keyPattern.numeroFactura) {
+          // Error de duplicado en numeroFactura, generar nuevo número
+          console.log(`Intento ${attempts + 1}: Número de factura duplicado, generando nuevo número...`);
+          factura.numeroFactura = await Factura.generarNumeroFactura();
+          attempts++;
+        } else {
+          // Otro tipo de error, relanzar
+          throw saveError;
+        }
+      }
+    }
+
+    if (!saved) {
+      throw new Error('No se pudo generar un número de factura único después de varios intentos');
+    }
 
     // Asociar factura con lectura
     await lectura.asociarFactura(factura._id);

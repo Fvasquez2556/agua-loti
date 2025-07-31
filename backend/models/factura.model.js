@@ -261,23 +261,53 @@ facturaSchema.methods.anular = function(motivo = '') {
 
 // Métodos estáticos
 facturaSchema.statics.generarNumeroFactura = async function() {
+  const Contador = require('./contador.model');
+  
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
+  const contadorId = `FAC-${year}${month}`;
   
-  // Buscar facturas del mes actual
-  const startOfMonth = new Date(year, now.getMonth(), 1);
-  const endOfMonth = new Date(year, now.getMonth() + 1, 0);
-  
-  const count = await this.countDocuments({
-    fechaEmision: {
-      $gte: startOfMonth,
-      $lte: endOfMonth
+  try {
+    // Usar findOneAndUpdate con upsert para incrementar de forma atómica
+    const contador = await Contador.findOneAndUpdate(
+      { _id: contadorId },
+      { $inc: { secuencial: 1 } },
+      { 
+        new: true, 
+        upsert: true,
+        setDefaultsOnInsert: true
+      }
+    );
+    
+    const sequential = contador.secuencial.toString().padStart(4, '0');
+    const numeroFactura = `${contadorId}-${sequential}`;
+    
+    // Verificar que no exista una factura con este número (seguridad adicional)
+    const existeFactura = await this.findOne({ numeroFactura });
+    
+    if (existeFactura) {
+      // Si por alguna razón existe, incrementar el contador una vez más
+      console.warn(`Número de factura ${numeroFactura} ya existe, generando nuevo número...`);
+      const nuevoContador = await Contador.findOneAndUpdate(
+        { _id: contadorId },
+        { $inc: { secuencial: 1 } },
+        { new: true }
+      );
+      
+      const nuevoSequential = nuevoContador.secuencial.toString().padStart(4, '0');
+      return `${contadorId}-${nuevoSequential}`;
     }
-  });
-  
-  const sequential = (count + 1).toString().padStart(4, '0');
-  return `FAC-${year}${month}-${sequential}`;
+    
+    return numeroFactura;
+    
+  } catch (error) {
+    console.error('Error al generar número de factura:', error);
+    // Fallback: usar timestamp si falla el contador
+    const timestamp = Date.now().toString().slice(-4);
+    const fallbackSequential = timestamp.padStart(4, '0');
+    return `${contadorId}-${fallbackSequential}`;
+  }
 };
 
 facturaSchema.statics.obtenerFacturasPendientes = function(clienteId = null) {
