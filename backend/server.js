@@ -2,11 +2,14 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-require("dotenv").config({ path: "../.env" }); // ✅ Ruta explícita
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "../.env") }); // ✅ Ruta absoluta
 
 // Rutas
 const authRoutes = require("./routes/auth.routes");
-const clienteRoutes = require("./routes/cliente.routes"); // ✅ Nueva ruta
+const clienteRoutes = require("./routes/cliente.routes");
+const facturaRoutes = require("./routes/factura.routes"); // ✅ Nueva ruta para facturas
+const lecturaRoutes = require("./routes/lectura.routes"); // ✅ Nueva ruta para lecturas
 
 // Inicializar app
 const app = express();
@@ -34,7 +37,9 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Rutas
 app.use("/api/auth", authRoutes);
-app.use("/api/clientes", clienteRoutes); // ✅ Nueva ruta para clientes
+app.use("/api/clientes", clienteRoutes);
+app.use("/api/facturas", facturaRoutes); // ✅ Nueva ruta para facturas
+app.use("/api/lecturas", lecturaRoutes); // ✅ Nueva ruta para lecturas
 
 // Ruta de prueba
 app.get('/api/test', (req, res) => {

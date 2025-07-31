@@ -1,0 +1,61 @@
+Listado de rutas de carpetas para el volumen secundario
+El número de serie del volumen es 5268-325D
+E:.
+¦   .env
+¦   .gitignore
+¦   MEJORAS-IMPLEMENTADAS.md
+¦   package-lock.json
+¦   package.json
+¦   proyecto_limpio.txt
+¦   README.md
+¦   
++---backend
+¦   ¦   createAdmin.js
+¦   ¦   server.js
+¦   ¦   
+¦   +---config
+¦   ¦       database.js
+¦   ¦       
+¦   +---controllers
+¦   ¦       auth.controller.js
+¦   ¦       cliente.controller.js
+¦   ¦       
+¦   +---middlewares
+¦   +---models
+¦   ¦       cliente.model.js
+¦   ¦       User.js
+¦   ¦       
+¦   +---routes
+¦   ¦       auth.routes.js
+¦   ¦       cliente.routes.js
+¦   ¦       
+¦   +---scripts
+¦   ¦       fixIndexes.js
+¦   ¦       seedDatabase.js
+¦   ¦       
+¦   +---utils
++---frontend
+¦   +---css
+¦   ¦       clientes.css
+¦   ¦       dashboard.css
+¦   ¦       factura.css
+¦   ¦       mainPage.css
+¦   ¦       pagos.css
+¦   ¦       styles.css
+¦   ¦       
+¦   +---js
+¦   ¦       auth.js
+¦   ¦       clientes.js
+¦   ¦       dashboard.js
+¦   ¦       factura.js
+¦   ¦       main.js
+¦   ¦       pageProtection.js
+¦   ¦       pagos.js
+¦   ¦       
+¦   +---pages
+¦           clientes.html
+¦           dashboard.html
+¦           factura.html
+¦           login.html
+¦           mainPage.html
+¦           pagos.html

@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
-    "crear-admin": "node backend/createAdmin.js"
+    "crear-admin": "node backend/createAdmin.js",
+    "init-facturacion": "node backend/scripts/initFacturacion.js",
+    "init-facturacion-test": "node backend/scripts/initFacturacion.js --test-data"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

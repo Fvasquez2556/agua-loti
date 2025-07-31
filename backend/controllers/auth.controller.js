@@ -7,21 +7,69 @@ exports.login = async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const user = await User.findOne({ username });
-    if (!user)
-      return res.status(400).json({ message: "Usuario no encontrado." });
+    console.log(`🔐 Intento de login para usuario: ${username}`);
+    
+    const user = await User.findOne({ username }).select('+password');
+    if (!user) {
+      console.log(`❌ Usuario no encontrado: ${username}`);
+      return res.status(400).json({ 
+        success: false,
+        message: "Usuario no encontrado." 
+      });
+    }
 
     const valid = await bcrypt.compare(password, user.password);
-    if (!valid)
-      return res.status(400).json({ message: "Contraseña incorrecta." });
+    if (!valid) {
+      console.log(`❌ Contraseña incorrecta para usuario: ${username}`);
+      return res.status(400).json({ 
+        success: false,
+        message: "Contraseña incorrecta." 
+      });
+    }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+    // Verificar que el usuario esté activo
+    if (user.estado !== 'activo') {
+      console.log(`❌ Usuario inactivo: ${username}`);
+      return res.status(400).json({ 
+        success: false,
+        message: "Usuario inactivo. Contacte al administrador." 
+      });
+    }
+
+    const token = jwt.sign(
+      { 
+        id: user._id, 
+        username: user.username,
+        role: user.role 
+      }, 
+      process.env.JWT_SECRET, 
+      {
+        expiresIn: "1d",
+      }
+    );
+
+    // Preparar datos del usuario para enviar (sin password)
+    const userData = {
+      id: user._id,
+      username: user.username,
+      role: user.role,
+      estado: user.estado
+    };
+
+    console.log(`✅ Login exitoso para usuario: ${username}`);
+
+    res.json({ 
+      success: true,
+      token,
+      user: userData,
+      message: "Login exitoso"
     });
-
-    res.json({ token });
+    
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error en el servidor." });
+    console.error('❌ Error en login:', err);
+    res.status(500).json({ 
+      success: false,
+      message: "Error en el servidor." 
+    });
   }
 };

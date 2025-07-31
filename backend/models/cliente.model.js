@@ -71,6 +71,21 @@ const clienteSchema = new mongoose.Schema({
       message: 'El formato del correo electrónico no es válido'
     }
   },
+  // ✅ Campos para el sistema de lecturas y facturación
+  ultimaLectura: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  fechaUltimaLectura: {
+    type: Date,
+    default: null
+  },
+  totalLecturas: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   estado: {
     type: String,
     enum: ['activo', 'inactivo', 'suspendido'],

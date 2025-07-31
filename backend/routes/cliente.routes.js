@@ -11,16 +11,16 @@ const {
   getEstadisticas
 } = require('../controllers/cliente.controller');
 
-// Middleware de autenticación (opcional - si quieres proteger las rutas)
-// const { authMiddleware } = require('../middleware/auth.middleware');
+// Middleware de autenticación - ACTIVADO para proteger las rutas
+const { authMiddleware } = require('../middlewares/auth.middleware');
 
-// Rutas públicas (o protegidas si descometas el middleware)
-router.get('/estadisticas', getEstadisticas);
-router.get('/', getClientes);
-router.get('/:id', getClienteById);
-router.post('/', createCliente);
-router.put('/:id', updateCliente);
-router.delete('/:id', deleteCliente);
-router.patch('/:id/reactivar', reactivarCliente);
+// Rutas protegidas con autenticación
+router.get('/estadisticas', authMiddleware, getEstadisticas);
+router.get('/', authMiddleware, getClientes);
+router.get('/:id', authMiddleware, getClienteById);
+router.post('/', authMiddleware, createCliente);
+router.put('/:id', authMiddleware, updateCliente);
+router.delete('/:id', authMiddleware, deleteCliente);
+router.patch('/:id/reactivar', authMiddleware, reactivarCliente);
 
 module.exports = router;

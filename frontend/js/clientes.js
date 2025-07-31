@@ -50,39 +50,15 @@ function getProjectClass(projectKey) {
 }
 
 /**
- * Función para hacer peticiones autenticadas al API
+ * Función para hacer peticiones autenticadas al API - USA AuthUtils del sistema centralizado
  * @param {string} url - URL del endpoint
  * @param {object} options - Opciones del fetch
  * @returns {Promise} Response del fetch
  */
 async function apiRequest(url, options = {}) {
     try {
-        const token = sessionStorage.getItem('auth_token');
-        
-        const defaultOptions = {
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token && { 'Authorization': `Bearer ${token}` })
-            }
-        };
-
-        const response = await fetch(url, {
-            ...defaultOptions,
-            ...options,
-            headers: {
-                ...defaultOptions.headers,
-                ...options.headers
-            }
-        });
-
-        // Si el token ha expirado, redirigir al login
-        if (response.status === 401) {
-            sessionStorage.removeItem('auth_token');
-            window.location.href = 'login.html';
-            throw new Error('Sesión expirada');
-        }
-
-        return response;
+        // Usar el sistema centralizado de autenticación
+        return await AuthUtils.authenticatedFetch(url, options);
     } catch (error) {
         console.error('Error en API request:', error);
         throw error;
