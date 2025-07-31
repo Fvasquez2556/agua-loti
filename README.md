@@ -196,7 +196,8 @@ NODE_ENV=development
 mongod --dbpath /path/to/your/db
 
 # O usando MongoDB Atlas (cloud)
-MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/agua-loti
+MONGO_URI=mongodb+srv://
+mongodb.net
 ```
 
 ## 📄 **Documentación Completa**
