@@ -22,12 +22,40 @@
                 <div id="message" class="message"></div>
 
                 <form id="invoiceForm">
-                    <!-- Selección de Cliente -->
+                    <!-- Selección de Cliente con Búsqueda y Filtros -->
                     <div class="form-group">
                         <label for="clienteSelect">Cliente *</label>
+                        
+                        <!-- Sistema de búsqueda y filtros -->
+                        <div class="client-search-section">
+                            <input type="text" id="searchClients" class="search-box" 
+                                   placeholder="🔍 Buscar por nombre, DPI, lote o contador...">
+                            
+                            <div class="filter-row">
+                                <select id="projectFilter" title="Filtrar por proyecto" aria-label="Filtrar clientes por proyecto">
+                                    <option value="">Todos los proyectos</option>
+                                    <option value="san-miguel">San Miguel</option>
+                                    <option value="santa-clara-1">Santa Clara Fase 1</option>
+                                    <option value="santa-clara-2">Santa Clara Fase 2</option>
+                                    <option value="cabanas-1">Cabañas Fase 1</option>
+                                    <option value="cabanas-2">Cabañas Fase 2</option>
+                                </select>
+                                
+                                <button type="button" id="clearFilters" class="clear-filters-btn" title="Limpiar filtros">
+                                    🗑️ Limpiar
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Select tradicional mejorado -->
                         <select id="clienteSelect" name="cliente" required>
                             <option value="">Cargando clientes...</option>
                         </select>
+                        
+                        <!-- Contador de clientes -->
+                        <div class="client-counter">
+                            <span id="clientCount">0 clientes encontrados</span>
+                        </div>
                     </div>
 
                     <!-- Información del Cliente (se llena automáticamente) -->

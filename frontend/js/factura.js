@@ -10,6 +10,7 @@ let facturas = [];
 let lecturas = [];
 let currentClientData = null;
 let pendingInvoiceData = null;
+let filteredClientes = []; // Nueva variable para clientes filtrados
 
 // Constantes del sistema según documento técnico
 const TARIFA_BASE = 50.00; // Q50.00 por 30,000 litros
@@ -199,11 +200,14 @@ async function loadClientes() {
         
         if (data.success && data.data && data.data.length > 0) {
             clientes = data.data;
+            // Inicializar filteredClientes con todos los clientes
+            filteredClientes = [...clientes];
             populateClientSelect();
             showMessage(`${clientes.length} clientes cargados correctamente`, 'success');
             console.log('✅ Clientes cargados:', clientes.length);
         } else {
             clientes = [];
+            filteredClientes = [];
             showNoClientsMessage();
             console.warn('⚠️ No se encontraron clientes activos');
         }
@@ -211,6 +215,7 @@ async function loadClientes() {
     } catch (error) {
         console.error('❌ Error al cargar clientes:', error);
         clientes = [];
+        filteredClientes = [];
         showNoClientsMessage();
         
         // Mensaje más específico según el tipo de error
@@ -235,17 +240,112 @@ function showNoClientsMessage() {
 
 /**
  * Función para poblar el select de clientes
+ * @param {Array} clientesToShow - Clientes a mostrar (opcional, usa filteredClientes por defecto)
  */
-function populateClientSelect() {
+function populateClientSelect(clientesToShow = null) {
     const select = document.getElementById('clienteSelect');
+    const clientsToDisplay = clientesToShow || filteredClientes || clientes;
+    
     select.innerHTML = '<option value="">Seleccione un cliente</option>';
     
-    clientes.forEach(cliente => {
+    clientsToDisplay.forEach(cliente => {
         const option = document.createElement('option');
         option.value = cliente._id;
-        option.textContent = `${cliente.nombres} ${cliente.apellidos} - ${cliente.contador}`;
+        
+        // Formato mejorado: Nombre - Proyecto - Contador - Lote
+        const projectName = getProjectName(cliente.proyecto);
+        option.textContent = `${cliente.nombres} ${cliente.apellidos} - ${projectName} - ${cliente.contador} - Lote ${cliente.lote}`;
+        
         select.appendChild(option);
     });
+    
+    // Actualizar contador
+    updateClientCounter(clientsToDisplay.length);
+}
+
+/**
+ * Función para actualizar el contador de clientes
+ * @param {number} count - Número de clientes mostrados
+ */
+function updateClientCounter(count) {
+    const counterElement = document.getElementById('clientCount');
+    if (counterElement) {
+        if (count === 0) {
+            counterElement.textContent = 'No se encontraron clientes';
+            counterElement.style.color = '#dc3545';
+        } else if (count === clientes.length) {
+            counterElement.textContent = `${count} clientes disponibles`;
+            counterElement.style.color = '#6c757d';
+        } else {
+            counterElement.textContent = `${count} de ${clientes.length} clientes`;
+            counterElement.style.color = '#28a745';
+        }
+    }
+}
+
+/**
+ * Función para manejar la búsqueda de clientes
+ * @param {Event} e - Evento de input
+ */
+function handleClientSearch(e) {
+    const searchTerm = e.target.value.toLowerCase().trim();
+    const projectFilter = document.getElementById('projectFilter').value;
+    
+    filterClients(searchTerm, projectFilter);
+}
+
+/**
+ * Función para manejar el filtro por proyecto
+ * @param {Event} e - Evento de cambio en select
+ */
+function handleProjectFilter(e) {
+    const projectFilter = e.target.value;
+    const searchTerm = document.getElementById('searchClients').value.toLowerCase().trim();
+    
+    filterClients(searchTerm, projectFilter);
+}
+
+/**
+ * Función para filtrar clientes según término de búsqueda y proyecto
+ * @param {string} searchTerm - Término de búsqueda
+ * @param {string} projectFilter - Filtro de proyecto
+ */
+function filterClients(searchTerm, projectFilter) {
+    let filtered = [...clientes];
+    
+    // Filtrar por proyecto si se seleccionó uno
+    if (projectFilter) {
+        filtered = filtered.filter(cliente => cliente.proyecto === projectFilter);
+    }
+    
+    // Filtrar por término de búsqueda si hay uno
+    if (searchTerm) {
+        filtered = filtered.filter(cliente => {
+            const nombreCompleto = `${cliente.nombres} ${cliente.apellidos}`.toLowerCase();
+            const dpi = cliente.dpi ? cliente.dpi.toLowerCase() : '';
+            const contador = cliente.contador ? cliente.contador.toLowerCase() : '';
+            const lote = cliente.lote ? cliente.lote.toString().toLowerCase() : '';
+            const proyecto = getProjectName(cliente.proyecto).toLowerCase();
+            
+            return (
+                nombreCompleto.includes(searchTerm) ||
+                dpi.includes(searchTerm) ||
+                contador.includes(searchTerm) ||
+                lote.includes(searchTerm) ||
+                proyecto.includes(searchTerm)
+            );
+        });
+    }
+    
+    // Ordenar por nombre para mejor experiencia de usuario
+    filtered.sort((a, b) => {
+        const nombreA = `${a.nombres} ${a.apellidos}`.toLowerCase();
+        const nombreB = `${b.nombres} ${b.apellidos}`.toLowerCase();
+        return nombreA.localeCompare(nombreB);
+    });
+    
+    filteredClientes = filtered;
+    populateClientSelect(filtered);
 }
 
 /**
@@ -650,6 +750,9 @@ function resetForm() {
     document.getElementById('invoiceForm').reset();
     hideClientSections();
     
+    // Limpiar filtros de búsqueda
+    clearClientFilters();
+    
     // Limpiar vista previa
     document.getElementById('invoice-items').innerHTML = `
         <tr>
@@ -661,6 +764,25 @@ function resetForm() {
     document.getElementById('invoice-totals').innerHTML = '';
     
     showMessage('Formulario limpiado', 'info');
+}
+
+/**
+ * Función para limpiar filtros de búsqueda de clientes
+ */
+function clearClientFilters() {
+    const searchInput = document.getElementById('searchClients');
+    const projectFilter = document.getElementById('projectFilter');
+    
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    if (projectFilter) {
+        projectFilter.value = '';
+    }
+    
+    // Restaurar todos los clientes
+    filteredClientes = [...clientes];
+    populateClientSelect();
 }
 
 /**
@@ -786,15 +908,42 @@ function setupEventListeners() {
     const closeModal = document.querySelector('.close-modal');
     const confirmModal = document.getElementById('confirmModal');
     
+    // Elementos de búsqueda y filtros
+    const searchClients = document.getElementById('searchClients');
+    const projectFilter = document.getElementById('projectFilter');
+    const clearFilters = document.getElementById('clearFilters');
+    
     // Remover listeners existentes (si los hay)
     clienteSelect.removeEventListener('change', handleClientChange);
     lecturaActual.removeEventListener('input', calculateConsumptionAndTariff);
     invoiceForm.removeEventListener('submit', handleFormSubmit);
     
+    // Remover listeners de búsqueda si existen
+    if (searchClients) {
+        searchClients.removeEventListener('input', handleClientSearch);
+    }
+    if (projectFilter) {
+        projectFilter.removeEventListener('change', handleProjectFilter);
+    }
+    if (clearFilters) {
+        clearFilters.removeEventListener('click', clearClientFilters);
+    }
+    
     // Agregar listeners frescos
     clienteSelect.addEventListener('change', handleClientChange);
     lecturaActual.addEventListener('input', calculateConsumptionAndTariff);
     invoiceForm.addEventListener('submit', handleFormSubmit);
+    
+    // Agregar listeners de búsqueda y filtros
+    if (searchClients) {
+        searchClients.addEventListener('input', handleClientSearch);
+    }
+    if (projectFilter) {
+        projectFilter.addEventListener('change', handleProjectFilter);
+    }
+    if (clearFilters) {
+        clearFilters.addEventListener('click', clearClientFilters);
+    }
     
     // Modal listeners
     if (closeModal) {

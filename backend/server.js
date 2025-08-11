@@ -10,6 +10,7 @@ const authRoutes = require("./routes/auth.routes");
 const clienteRoutes = require("./routes/cliente.routes");
 const facturaRoutes = require("./routes/factura.routes"); // ✅ Nueva ruta para facturas
 const lecturaRoutes = require("./routes/lectura.routes"); // ✅ Nueva ruta para lecturas
+const pagoRoutes = require("./routes/pago.routes"); // ✅ Nueva ruta para pagos
 
 // Inicializar app
 const app = express();
@@ -35,11 +36,15 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Rutas
+// Servir archivos estáticos del frontend
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+// Rutas de API
 app.use("/api/auth", authRoutes);
 app.use("/api/clientes", clienteRoutes);
 app.use("/api/facturas", facturaRoutes); // ✅ Nueva ruta para facturas
 app.use("/api/lecturas", lecturaRoutes); // ✅ Nueva ruta para lecturas
+app.use("/api/pagos", pagoRoutes); // ✅ Nueva ruta para pagos
 
 // Ruta de prueba
 app.get('/api/test', (req, res) => {
@@ -47,6 +52,21 @@ app.get('/api/test', (req, res) => {
     message: 'API funcionando correctamente',
     timestamp: new Date().toISOString()
   });
+});
+
+// Ruta raíz que redirije al login
+app.get('/', (req, res) => {
+  res.redirect('/pages/login.html');
+});
+
+// Manejar rutas del frontend (SPA routing)
+app.get('*', (req, res, next) => {
+  // Si la ruta empieza con /api/, deja que el middleware de error la maneje
+  if (req.originalUrl.startsWith('/api/')) {
+    return next();
+  }
+  // Para todas las demás rutas, servir el login si no es un archivo estático
+  res.sendFile(path.join(__dirname, '../frontend/pages/login.html'));
 });
 
 // Middleware de manejo de errores
@@ -59,11 +79,11 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Manejar rutas no encontradas
-app.use('*', (req, res) => {
+// Manejar rutas de API no encontradas
+app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Ruta no encontrada'
+    message: 'Ruta de API no encontrada'
   });
 });
 
@@ -71,7 +91,8 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor escuchando en el puerto ${PORT}`);
-  console.log(`📊 API de clientes disponible en: http://localhost:${PORT}/api/clientes`);
+  console.log(`🏠 Aplicación disponible en: http://localhost:${PORT}`);
+  console.log(`📊 API disponible en: http://localhost:${PORT}/api/`);
 });
 
 // Exportar app para pruebas
