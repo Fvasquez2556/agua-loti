@@ -293,3 +293,158 @@
         html {
             scroll-behavior: smooth;
         }
+
+        /* Nuevos estilos para estadísticas mejoradas */
+        .stats-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3);
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .refresh-btn:hover {
+            transform: rotate(180deg) scale(1.1);
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.5);
+        }
+
+        .loading-indicator {
+            color: #666;
+            font-size: 14px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loading-indicator span {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .alert-indicator {
+            margin-top: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+            border-radius: 10px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .alert-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .alert-icon {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+
+        .alert-text {
+            flex: 1;
+            font-weight: 500;
+        }
+
+        .alert-amount {
+            font-size: 14px;
+            opacity: 0.9;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 5px;
+        }
+
+        .last-update {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #666;
+            opacity: 0.8;
+        }
+
+        .temporary-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            z-index: 1000;
+            font-size: 14px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .temporary-message.error {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .temporary-message.success {
+            background: #4ecdc4;
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Mejoras en las tarjetas de estadísticas */
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-number {
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        /* Responsive para elementos nuevos */
+        @media (max-width: 768px) {
+            .stats-header {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .alert-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .temporary-message {
+                right: 10px;
+                left: 10px;
+                top: 10px;
+            }
+        }

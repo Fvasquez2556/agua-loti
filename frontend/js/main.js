@@ -112,7 +112,6 @@ document.addEventListener('DOMContentLoaded', function() {
  * Limpiar cualquier token residual al cargar la página de login
  */
 window.addEventListener('load', function() {
-    // Limpiar cualquier localStorage residual
-    localStorage.removeItem('token');
-    localStorage.removeItem('user_data');
+    // Usar AuthManager para limpiar correctamente
+    auth.logout();
 });

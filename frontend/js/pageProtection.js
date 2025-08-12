@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mostrar información del usuario si está disponible
     displayUserInfo();
 
-    // Configurar botón de logout si existe
+    // Configurar botón de logout
     setupLogoutButton();
 
     // Verificar token periódicamente (cada 5 minutos)
@@ -43,29 +43,150 @@ function displayUserInfo() {
  * Configurar botón de logout
  */
 function setupLogoutButton() {
-    // Buscar botones de logout
-    const logoutButtons = document.querySelectorAll('[data-logout], .logout-btn, #logoutBtn');
+    // Buscar todos los botones de logout posibles
+    const logoutButtons = document.querySelectorAll('#logoutBtn, .logout-btn, [data-logout]');
     
     logoutButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
+        // Remover cualquier listener existente clonando el elemento
+        const newButton = button.cloneNode(true);
+        button.parentNode.replaceChild(newButton, button);
+        
+        // Agregar el nuevo listener
+        newButton.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             
-            // Mostrar confirmación
-            if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
-                AuthUtils.logout();
-            }
+            // Usar modal personalizado en lugar de confirm()
+            showLogoutModal();
         });
     });
+}
 
-    // También escuchar Ctrl+L para logout rápido (opcional)
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.key === 'l') {
-            e.preventDefault();
-            if (confirm('¿Cerrar sesión? (Ctrl+L)')) {
-                AuthUtils.logout();
-            }
+/**
+ * Mostrar modal de confirmación de logout personalizado
+ */
+function showLogoutModal() {
+    // Crear modal personalizado
+    const modal = document.createElement('div');
+    modal.id = 'logoutModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        text-align: center;
+        max-width: 400px;
+        width: 90%;
+    `;
+
+    modalContent.innerHTML = `
+        <h3 style="margin: 0 0 15px 0; color: #333;">Cerrar Sesión</h3>
+        <p style="margin: 0 0 25px 0; color: #666;">¿Estás seguro de que deseas cerrar sesión?</p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button id="confirmLogout" style="
+                background: #dc3545;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+            ">Sí, cerrar sesión</button>
+            <button id="cancelLogout" style="
+                background: #6c757d;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+            ">Cancelar</button>
+        </div>
+    `;
+
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // Event listeners para los botones
+    document.getElementById('confirmLogout').addEventListener('click', () => {
+        // Limpiar datos de autenticación
+        auth.logout();
+        
+        // Mostrar mensaje de confirmación
+        showLogoutMessage();
+        
+        // Redirigir después de un breve delay
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 1000);
+        
+        // Remover modal
+        modal.remove();
+    });
+
+    document.getElementById('cancelLogout').addEventListener('click', () => {
+        modal.remove();
+    });
+
+    // Cerrar modal al hacer clic fuera
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
         }
     });
+
+    // Cerrar modal con ESC
+    const handleKeyPress = (e) => {
+        if (e.key === 'Escape') {
+            modal.remove();
+            document.removeEventListener('keydown', handleKeyPress);
+        }
+    };
+    document.addEventListener('keydown', handleKeyPress);
+}
+
+/**
+ * Mostrar mensaje de logout exitoso
+ */
+function showLogoutMessage() {
+    const message = document.createElement('div');
+    message.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #28a745;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 5px;
+        font-weight: 500;
+        z-index: 10001;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    `;
+    message.textContent = 'Sesión cerrada exitosamente';
+    document.body.appendChild(message);
+
+    setTimeout(() => {
+        if (message.parentNode) {
+            message.remove();
+        }
+    }, 800);
 }
 
 /**

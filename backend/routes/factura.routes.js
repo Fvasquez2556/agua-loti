@@ -32,6 +32,31 @@ router.get('/', facturaController.getFacturas);
 router.get('/resumen', facturaController.getResumenFacturacion);
 
 /**
+ * @route GET /api/facturas/dashboard/avanzadas
+ * @desc Obtener estadísticas avanzadas para el dashboard
+ * @access Private
+ */
+router.get('/dashboard/avanzadas', facturaController.getEstadisticasAvanzadas);
+
+/**
+ * @route GET /api/facturas/reportes/datos
+ * @desc Obtener datos para reportes detallados
+ * @query {string} tipo - Tipo de reporte: clientes, facturas, pagos, completo
+ * @query {string} fechaInicio - Fecha de inicio para filtrar (opcional)
+ * @query {string} fechaFin - Fecha de fin para filtrar (opcional)
+ * @query {string} proyecto - Proyecto específico (opcional)
+ * @access Private
+ */
+router.get('/reportes/datos', facturaController.getDatosReportes);
+
+/**
+ * @route GET /api/facturas/dashboard
+ * @desc Obtener estadísticas generales para el dashboard
+ * @access Private
+ */
+router.get('/dashboard', facturaController.getEstadisticasDashboard);
+
+/**
  * @route GET /api/facturas/vencidas
  * @desc Obtener facturas vencidas
  * @access Private

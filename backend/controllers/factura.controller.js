@@ -2,6 +2,7 @@
 const Factura = require('../models/factura.model');
 const Lectura = require('../models/lectura.model');
 const Cliente = require('../models/cliente.model');
+const Pago = require('../models/pago.model');
 
 /**
  * Obtener todas las facturas con filtros opcionales
@@ -465,6 +466,95 @@ exports.getFacturasVencidas = async (req, res) => {
 };
 
 /**
+ * Obtener estadísticas generales para el dashboard
+ */
+exports.getEstadisticasDashboard = async (req, res) => {
+  try {
+    const Cliente = require('../models/cliente.model');
+    const Pago = require('../models/pago.model');
+
+    // Obtener fecha actual para filtros
+    const fechaActual = new Date();
+    const mesActual = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
+    const finMesActual = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0, 23, 59, 59);
+
+    // 1. Total de clientes activos
+    const totalClientes = await Cliente.countDocuments({ estado: 'activo' });
+
+    // 2. Facturas del mes actual
+    const facturasMes = await Factura.countDocuments({
+      fechaEmision: {
+        $gte: mesActual,
+        $lte: finMesActual
+      }
+    });
+
+    // 3. Facturas pendientes de pago
+    const facturasPendientes = await Factura.countDocuments({
+      estado: 'pendiente'
+    });
+
+    // 4. Ingresos del mes actual (pagos realizados)
+    const ingresosMes = await Pago.aggregate([
+      {
+        $match: {
+          fechaPago: {
+            $gte: mesActual,
+            $lte: finMesActual
+          },
+          estado: 'completado'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$monto' }
+        }
+      }
+    ]);
+
+    // 5. Facturas vencidas
+    const facturasVencidas = await Factura.obtenerFacturasVencidas();
+    
+    // 6. Monto total pendiente de cobro
+    const montoPendiente = await Factura.aggregate([
+      {
+        $match: {
+          estado: 'pendiente'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$montoTotal' }
+        }
+      }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        totalClientes,
+        facturasMes,
+        facturasPendientes,
+        facturasVencidas: facturasVencidas.length,
+        ingresosMes: ingresosMes[0]?.total || 0,
+        montoPendiente: montoPendiente[0]?.total || 0,
+        ultimaActualizacion: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener estadísticas del dashboard:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Función auxiliar para calcular tarifa según especificaciones técnicas
  */
 function calcularTarifa(consumoLitros) {
@@ -518,6 +608,411 @@ function aplicarSistemaRedondeo(amount) {
   }
 }
 
+/**
+ * Obtener estadísticas avanzadas para el dashboard
+ */
+exports.getEstadisticasAvanzadas = async (req, res) => {
+  try {
+    // Obtener estadísticas básicas reutilizando la lógica existente
+    const fechaActual = new Date();
+    const primerDiaMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), 1);
+    const ultimoDiaMes = new Date(fechaActual.getFullYear(), fechaActual.getMonth() + 1, 0);
+
+    const [
+      totalClientes,
+      facturasMes,
+      pagosPendientes,
+      ingresosMes,
+      facturasVencidas,
+      ingresosPorMes,
+      consumoPorProyecto,
+      topConsumidores,
+      clientesMorosos,
+      pagosRecientes,
+      facturasPorEstado,
+      tendenciaIngresos
+    ] = await Promise.all([
+      Cliente.countDocuments(),
+      Factura.countDocuments({
+        fechaEmision: { $gte: primerDiaMes, $lte: ultimoDiaMes }
+      }),
+      Factura.countDocuments({ estado: 'pendiente' }),
+      Factura.aggregate([
+        {
+          $match: {
+            estado: 'pagada',
+            fechaEmision: { $gte: primerDiaMes, $lte: ultimoDiaMes }
+          }
+        },
+        { $group: { _id: null, total: { $sum: '$montoTotal' } } }
+      ]),
+      Factura.countDocuments({
+        estado: 'pendiente',
+        fechaVencimiento: { $lt: new Date() }
+      }),
+      obtenerIngresosPorMes(),
+      obtenerConsumoPorProyecto(),
+      obtenerTopConsumidores(),
+      obtenerClientesMorosos(),
+      obtenerPagosRecientes(),
+      obtenerFacturasPorEstado(),
+      obtenerTendenciaIngresos()
+    ]);
+
+    const estadisticasBasicas = {
+      totalClientes,
+      facturasMes,
+      pagosPendientes,
+      ingresosMes: ingresosMes[0]?.total || 0,
+      facturasVencidas
+    };
+
+    res.json({
+      success: true,
+      data: {
+        ...estadisticasBasicas,
+        ingresosPorMes,
+        consumoPorProyecto,
+        topConsumidores,
+        clientesMorosos,
+        pagosRecientes,
+        facturasPorEstado,
+        tendenciaIngresos
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener estadísticas avanzadas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Obtener datos para reportes detallados
+ */
+exports.getDatosReportes = async (req, res) => {
+  try {
+    const { tipo, fechaInicio, fechaFin, proyecto } = req.query;
+
+    let filtros = {};
+    
+    // Aplicar filtros de fecha si se proporcionan
+    if (fechaInicio || fechaFin) {
+      filtros.createdAt = {};
+      if (fechaInicio) filtros.createdAt.$gte = new Date(fechaInicio);
+      if (fechaFin) filtros.createdAt.$lte = new Date(fechaFin);
+    }
+
+    let datos = {};
+
+    switch (tipo) {
+      case 'clientes':
+        datos = await obtenerDatosClientes(proyecto);
+        break;
+      case 'facturas':
+        datos = await obtenerDatosFacturas(filtros, proyecto);
+        break;
+      case 'pagos':
+        datos = await obtenerDatosPagos(filtros, proyecto);
+        break;
+      case 'completo':
+        datos = await obtenerReporteCompleto(filtros, proyecto);
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Tipo de reporte no válido'
+        });
+    }
+
+    res.json({
+      success: true,
+      data: datos
+    });
+
+  } catch (error) {
+    console.error('Error al obtener datos de reportes:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Funciones auxiliares para estadísticas avanzadas
+
+async function obtenerIngresosPorMes() {
+  const seiseMesesAtras = new Date();
+  seiseMesesAtras.setMonth(seiseMesesAtras.getMonth() - 6);
+
+  const pipeline = [
+    {
+      $match: {
+        estado: 'pagada',
+        createdAt: { $gte: seiseMesesAtras }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          año: { $year: '$createdAt' },
+          mes: { $month: '$createdAt' }
+        },
+        totalIngresos: { $sum: '$montoTotal' },
+        numeroFacturas: { $sum: 1 }
+      }
+    },
+    {
+      $sort: { '_id.año': 1, '_id.mes': 1 }
+    }
+  ];
+
+  return await Factura.aggregate(pipeline);
+}
+
+async function obtenerConsumoPorProyecto() {
+  const pipeline = [
+    {
+      $lookup: {
+        from: 'clientes',
+        localField: 'clienteId',
+        foreignField: '_id',
+        as: 'cliente'
+      }
+    },
+    { $unwind: '$cliente' },
+    {
+      $group: {
+        _id: '$cliente.proyecto',
+        totalConsumo: { $sum: '$consumoLitros' },
+        numeroFacturas: { $sum: 1 },
+        totalMonto: { $sum: '$montoTotal' },
+        promedioConsumo: { $avg: '$consumoLitros' }
+      }
+    }
+  ];
+
+  return await Factura.aggregate(pipeline);
+}
+
+async function obtenerTopConsumidores() {
+  const pipeline = [
+    {
+      $lookup: {
+        from: 'clientes',
+        localField: 'clienteId',
+        foreignField: '_id',
+        as: 'cliente'
+      }
+    },
+    { $unwind: '$cliente' },
+    {
+      $group: {
+        _id: '$clienteId',
+        nombre: { $first: { $concat: ['$cliente.nombres', ' ', '$cliente.apellidos'] } },
+        contador: { $first: '$cliente.contador' },
+        proyecto: { $first: '$cliente.proyecto' },
+        totalConsumo: { $sum: '$consumoLitros' },
+        numeroFacturas: { $sum: 1 },
+        totalFacturado: { $sum: '$montoTotal' }
+      }
+    },
+    { $sort: { totalConsumo: -1 } },
+    { $limit: 5 }
+  ];
+
+  return await Factura.aggregate(pipeline);
+}
+
+async function obtenerClientesMorosos() {
+  const fechaLimite = new Date();
+  fechaLimite.setDate(fechaLimite.getDate() - 30); // Facturas vencidas hace 30 días
+
+  const pipeline = [
+    {
+      $match: {
+        estado: 'pendiente',
+        fechaVencimiento: { $lt: fechaLimite }
+      }
+    },
+    {
+      $lookup: {
+        from: 'clientes',
+        localField: 'clienteId',
+        foreignField: '_id',
+        as: 'cliente'
+      }
+    },
+    { $unwind: '$cliente' },
+    {
+      $group: {
+        _id: '$clienteId',
+        nombre: { $first: { $concat: ['$cliente.nombres', ' ', '$cliente.apellidos'] } },
+        contador: { $first: '$cliente.contador' },
+        proyecto: { $first: '$cliente.proyecto' },
+        whatsapp: { $first: '$cliente.whatsapp' },
+        facturasVencidas: { $sum: 1 },
+        montoTotal: { $sum: '$montoTotal' },
+        facturasMasAntigua: { $min: '$fechaVencimiento' }
+      }
+    },
+    { $sort: { facturasVencidas: -1, montoTotal: -1 } }
+  ];
+
+  return await Factura.aggregate(pipeline);
+}
+
+async function obtenerPagosRecientes() {
+  return await Pago.find()
+    .populate('facturaId', 'numeroFactura')
+    .populate('clienteId', 'nombres apellidos contador')
+    .sort({ createdAt: -1 })
+    .limit(10);
+}
+
+async function obtenerFacturasPorEstado() {
+  const pipeline = [
+    {
+      $group: {
+        _id: '$estado',
+        cantidad: { $sum: 1 },
+        montoTotal: { $sum: '$montoTotal' }
+      }
+    }
+  ];
+
+  return await Factura.aggregate(pipeline);
+}
+
+async function obtenerTendenciaIngresos() {
+  const mesActual = new Date();
+  const mesAnterior = new Date();
+  mesAnterior.setMonth(mesAnterior.getMonth() - 1);
+
+  const [ingresosActual, ingresosAnterior] = await Promise.all([
+    Factura.aggregate([
+      {
+        $match: {
+          estado: 'pagada',
+          createdAt: {
+            $gte: new Date(mesActual.getFullYear(), mesActual.getMonth(), 1),
+            $lt: new Date(mesActual.getFullYear(), mesActual.getMonth() + 1, 1)
+          }
+        }
+      },
+      { $group: { _id: null, total: { $sum: '$montoTotal' } } }
+    ]),
+    Factura.aggregate([
+      {
+        $match: {
+          estado: 'pagada',
+          createdAt: {
+            $gte: new Date(mesAnterior.getFullYear(), mesAnterior.getMonth(), 1),
+            $lt: new Date(mesAnterior.getFullYear(), mesAnterior.getMonth() + 1, 1)
+          }
+        }
+      },
+      { $group: { _id: null, total: { $sum: '$montoTotal' } } }
+    ])
+  ]);
+
+  const totalActual = ingresosActual[0]?.total || 0;
+  const totalAnterior = ingresosAnterior[0]?.total || 0;
+  const porcentajeCambio = totalAnterior > 0 ? ((totalActual - totalAnterior) / totalAnterior) * 100 : 0;
+
+  return {
+    mesActual: totalActual,
+    mesAnterior: totalAnterior,
+    porcentajeCambio: Math.round(porcentajeCambio * 100) / 100
+  };
+}
+
+// Funciones auxiliares para reportes
+
+async function obtenerDatosClientes(proyecto) {
+  let filtros = {};
+  if (proyecto) filtros.proyecto = proyecto;
+
+  const clientes = await Cliente.find(filtros);
+  
+  // Obtener estadísticas por cliente
+  const clientesConEstadisticas = await Promise.all(
+    clientes.map(async (cliente) => {
+      const facturas = await Factura.find({ clienteId: cliente._id });
+      const pagos = await Pago.find({ clienteId: cliente._id });
+      
+      const totalFacturado = facturas.reduce((sum, f) => sum + f.montoTotal, 0);
+      const totalPagado = pagos.reduce((sum, p) => sum + p.monto, 0);
+      const pendiente = totalFacturado - totalPagado;
+      
+      return {
+        ...cliente.toObject(),
+        estadisticas: {
+          totalFacturas: facturas.length,
+          totalFacturado,
+          totalPagado,
+          pendiente,
+          facturasPendientes: facturas.filter(f => f.estado === 'pendiente').length
+        }
+      };
+    })
+  );
+
+  return clientesConEstadisticas;
+}
+
+async function obtenerDatosFacturas(filtros, proyecto) {
+  if (proyecto) {
+    // Obtener IDs de clientes del proyecto
+    const clientesProyecto = await Cliente.find({ proyecto }).select('_id');
+    const clienteIds = clientesProyecto.map(c => c._id);
+    filtros.clienteId = { $in: clienteIds };
+  }
+
+  return await Factura.find(filtros)
+    .populate('clienteId', 'nombres apellidos contador proyecto')
+    .sort({ createdAt: -1 });
+}
+
+async function obtenerDatosPagos(filtros, proyecto) {
+  if (proyecto) {
+    const clientesProyecto = await Cliente.find({ proyecto }).select('_id');
+    const clienteIds = clientesProyecto.map(c => c._id);
+    filtros.clienteId = { $in: clienteIds };
+  }
+
+  return await Pago.find(filtros)
+    .populate('clienteId', 'nombres apellidos contador proyecto')
+    .populate('facturaId', 'numeroFactura')
+    .sort({ createdAt: -1 });
+}
+
+async function obtenerReporteCompleto(filtros, proyecto) {
+  const [clientes, facturas, pagos] = await Promise.all([
+    obtenerDatosClientes(proyecto),
+    obtenerDatosFacturas(filtros, proyecto),
+    obtenerDatosPagos(filtros, proyecto)
+  ]);
+
+  return {
+    clientes,
+    facturas,
+    pagos,
+    resumen: {
+      totalClientes: clientes.length,
+      totalFacturas: facturas.length,
+      totalPagos: pagos.length,
+      montoTotalFacturado: facturas.reduce((sum, f) => sum + f.montoTotal, 0),
+      montoTotalPagado: pagos.reduce((sum, p) => sum + p.monto, 0)
+    }
+  };
+}
+
 module.exports = {
   getFacturas: exports.getFacturas,
   getFacturaById: exports.getFacturaById,
@@ -525,5 +1020,8 @@ module.exports = {
   marcarComoPagada: exports.marcarComoPagada,
   anularFactura: exports.anularFactura,
   getResumenFacturacion: exports.getResumenFacturacion,
-  getFacturasVencidas: exports.getFacturasVencidas
+  getFacturasVencidas: exports.getFacturasVencidas,
+  getEstadisticasDashboard: exports.getEstadisticasDashboard,
+  getEstadisticasAvanzadas: exports.getEstadisticasAvanzadas,
+  getDatosReportes: exports.getDatosReportes
 };
