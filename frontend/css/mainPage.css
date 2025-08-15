@@ -7,7 +7,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #5f9eea 0%, #6ba2ba 100%);
             min-height: 100vh;
             padding: clamp(10px, 3vw, 20px);
             margin: 0;
@@ -30,7 +30,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            background: linear-gradient(135deg, #4facfe 0%, #42b4db 100%);
             color: white;
             padding: clamp(20px, 4vw, 30px);
             text-align: center;
@@ -143,7 +143,7 @@
         .module-card:hover {
             transform: translateY(-10px);
             box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-            border-color: #4facfe;
+            border-color: #42b4db;
         }
 
         .module-icon {
@@ -165,11 +165,11 @@
         }
 
         .module-card.clientes .module-icon {
-            background: linear-gradient(135deg, #4ecdc4, #44a08d);
+            background: linear-gradient(135deg, #4ebbcd, #44a08d);
         }
 
         .module-card.pagos .module-icon {
-            background: linear-gradient(135deg, #45b7d1, #96c93d);
+            background: linear-gradient(135deg, #45b7d1, #5fafb8);
         }
 
         .module-card.reportes .module-icon {
@@ -212,7 +212,7 @@
             content: "✓";
             position: absolute;
             left: 0;
-            color: #4facfe;
+            color: #42b4db;
             font-weight: bold;
         }
 
