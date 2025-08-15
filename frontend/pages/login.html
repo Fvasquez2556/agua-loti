@@ -1,43 +1,70 @@
-<!-- frontend/pages/login.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Agua LOTI</title>
-  <link rel="stylesheet" href="../css/styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema de Agua LOTI</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <!-- Iconos Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body>
-  <div class="login-container">
-    <div class="login-header">
-      <h2>💧 Agua LOTI</h2>
-      <p>Ingreso al sistema</p>
+<body class="login-page">
+    <!-- Contenedor principal del login -->
+    <div class="login-container">
+        <!-- Título -->
+        <h1 class="login-title">Inicio de Sesión</h1>
+        <p class="login-subtitle">Bienvenido al Sistema Agua-Loti</p>
+        
+        <!-- Mensajes de error y éxito -->
+        <div id="errorMsg" class="error-message"></div>
+        <div id="successMsg" class="success-message"></div>
+        
+        <!-- Formulario de login -->
+        <form id="loginForm">
+            <!-- Campo Usuario -->
+            <div class="form-group">
+                <i class="fas fa-user input-icon"></i>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    class="form-input" 
+                    placeholder="Nombre de Usuario" 
+                    required
+                    autocomplete="username"
+                >
+            </div>
+            
+            <!-- Campo Contraseña -->
+            <div class="form-group">
+                <i class="fas fa-lock input-icon"></i>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    class="form-input" 
+                    placeholder="Contraseña" 
+                    required
+                    autocomplete="current-password"
+                >
+            </div>
+            
+            <!-- Remember me -->
+            <div class="remember-container">
+                <input type="checkbox" id="rememberMe" class="remember-checkbox">
+                <label for="rememberMe">Recordarme</label>
+            </div>
+            
+            <!-- Botón de login -->
+            <button type="submit" class="login-button" id="loginBtn">
+                <span class="button-text">Iniciar Sesión</span>
+                <i class="fas fa-spinner fa-spin button-spinner"></i>
+            </button>
+        </form>
     </div>
     
-    <form id="loginForm" class="login-form">
-      <div class="form-group">
-        <input type="text" id="username" placeholder="Usuario" required autocomplete="username" />
-      </div>
-      
-      <div class="form-group">
-        <input type="password" id="password" placeholder="Contraseña" required autocomplete="current-password" />
-      </div>
-      
-      <button type="submit" class="login-btn">
-        Ingresar
-      </button>
-      
-      <p id="errorMsg" class="error-msg"></p>
-    </form>
-    
-    <div class="login-footer">
-      <p>Sistema de Gestión de Agua LOTI</p>
-      <small>&copy; 2025 - Todos los derechos reservados</small>
-    </div>
-  </div>
-
-  <!-- Scripts de autenticación -->
-  <script src="../js/auth.js"></script>
-  <script src="../js/main.js"></script>
+    <!-- Scripts -->
+    <script src="../js/auth.js"></script>
+    <script src="../js/main.js"></script>
 </body>
 </html>

@@ -168,7 +168,7 @@
             <section class="pending-invoices-section">
                 <h2 class="section-title">Facturas Pendientes</h2>
                 
-                <!-- Filtros -->
+                <!-- Filtros mejorados -->
                 <div class="filters-section">
                     <input type="text" id="searchPending" class="search-box" 
                            placeholder="🔍 Buscar por cliente, factura o proyecto...">
@@ -216,32 +216,67 @@
                     </div>
                 </div>
 
-                <!-- Tabla de facturas pendientes -->
-                <div class="table-wrapper">
-                    <table class="pending-table">
-                        <thead>
-                            <tr>
-                                <th>Cliente</th>
-                                <th>No. Factura</th>
-                                <th>Fecha Emisión</th>
-                                <th>Días Vencida</th>
-                                <th>Monto Original</th>
-                                <th>Mora</th>
-                                <th>Total</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="pendingTableBody">
-                            <tr>
-                                <td colspan="9" class="loading-cell">
-                                    <div class="loading-spinner">
-                                        🔄 Cargando facturas pendientes...
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- Tabla de facturas pendientes con paginación -->
+                <div class="table-container">
+                    <div class="table-wrapper">
+                        <table class="pending-table">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>No. Factura</th>
+                                    <th>Fecha Emisión</th>
+                                    <th>Días Vencida</th>
+                                    <th>Monto Original</th>
+                                    <th>Mora</th>
+                                    <th>Total</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingTableBody">
+                                <tr>
+                                    <td colspan="9" class="loading-cell">
+                                        <div class="loading-spinner">
+                                            <div class="spinner"></div>
+                                            Cargando facturas pendientes...
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Controles de paginación -->
+                    <div class="pagination-container hidden" id="paginationContainer">
+                        <div class="pagination-info">
+                            <span id="paginationInfo">Mostrando 0 de 0 registros</span>
+                        </div>
+                        
+                        <div class="pagination-controls">
+                            <div class="page-size-selector">
+                                <label>Mostrar:</label>
+                                <select id="pageSizeSelect" title="Seleccionar cantidad por página">
+                                    <option value="5">5</option>
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                                <span>por página</span>
+                            </div>
+                            
+                            <div>
+                                <button class="pagination-btn" id="firstPageBtn" title="Primera página">⏮️</button>
+                                <button class="pagination-btn" id="prevPageBtn" title="Página anterior">⬅️</button>
+                                
+                                <span id="pageNumbers">
+                                    <!-- Se llenarán dinámicamente -->
+                                </span>
+                                
+                                <button class="pagination-btn" id="nextPageBtn" title="Página siguiente">➡️</button>
+                                <button class="pagination-btn" id="lastPageBtn" title="Última página">⏭️</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 

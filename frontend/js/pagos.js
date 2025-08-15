@@ -7,9 +7,16 @@
 // Variables globales
 let clientes = [];
 let facturasPendientes = [];
+let filteredFacturas = []; // Facturas filtradas
 let historialPagos = [];
 let currentSelectedInvoice = null;
 let pendingPaymentData = null;
+
+// Variables de paginación
+let currentPage = 1;
+let pageSize = 10;
+let totalPages = 1;
+let totalRecords = 0;
 
 // Constantes del sistema
 const MORA_MENSUAL = 0.07; // 7% mora mensual
@@ -224,48 +231,88 @@ function updatePendingSummary(resumen) {
 }
 
 /**
- * Poblar tabla de facturas pendientes
+ * Poblar tabla de facturas pendientes con paginación
  */
 function populatePendingInvoicesTable() {
+    // Aplicar filtros
+    applyFilters();
+    
+    // Calcular paginación
+    totalRecords = filteredFacturas.length;
+    totalPages = Math.ceil(totalRecords / pageSize);
+    
+    // Obtener datos de la página actual
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const pageData = filteredFacturas.slice(startIndex, endIndex);
+    
     const tbody = document.getElementById('pendingTableBody');
     
-    if (facturasPendientes.length === 0) {
+    if (pageData.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" class="loading-cell">
-                    <div class="no-data">
-                        ✅ No hay facturas pendientes
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-message">No se encontraron facturas</div>
+                        <div class="empty-state-submessage">Intenta ajustar los filtros de búsqueda</div>
                     </div>
                 </td>
             </tr>
         `;
+        document.getElementById('paginationContainer').classList.add('hidden');
         return;
     }
     
-    tbody.innerHTML = facturasPendientes.map(factura => {
+    // Mostrar solo las 10 facturas más antiguas (ordenadas por fecha de emisión)
+    const sortedData = pageData.sort((a, b) => {
+        const dateA = new Date(a.fechaEmision);
+        const dateB = new Date(b.fechaEmision);
+        return dateA - dateB; // Más antigua primero
+    });
+    
+    tbody.innerHTML = sortedData.map(factura => {
         const cliente = factura.clienteId;
         const totalConMora = factura.montoTotalConMora || factura.montoTotal;
         const statusClass = factura.diasMora > 0 ? 'overdue' : 'pending';
-        const statusText = factura.diasMora > 0 ? 'Vencida' : 'Pendiente';
+        const statusText = factura.diasMora > 0 ? `Vencida (${factura.diasMora} días)` : 'Pendiente';
         
         return `
-            <tr>
-                <td>${cliente.nombres} ${cliente.apellidos}</td>
-                <td>${factura.numeroFactura}</td>
-                <td>${formatDate(factura.fechaEmision)}</td>
-                <td class="text-center ${factura.diasMora > 0 ? 'overdue' : ''}">${factura.diasMora || 0}</td>
-                <td class="text-right">${formatCurrency(factura.montoTotal)}</td>
-                <td class="text-right ${factura.montoMora > 0 ? 'overdue' : ''}">${formatCurrency(factura.montoMora || 0)}</td>
-                <td class="text-right"><strong>${formatCurrency(totalConMora)}</strong></td>
-                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+            <tr class="factura-row" data-factura-id="${factura._id}">
                 <td>
-                    <button class="btn-sm btn-primary" onclick="selectInvoiceForPayment('${factura._id}')">
+                    <div class="cliente-info">
+                        <strong>${cliente?.nombre || 'N/A'}</strong>
+                        <br>
+                        <small class="text-muted">${cliente?.proyecto || 'Sin proyecto'}</small>
+                    </div>
+                </td>
+                <td><strong>${factura.numeroFactura}</strong></td>
+                <td>${formatDate(factura.fechaEmision)}</td>
+                <td class="${statusClass}">
+                    ${factura.diasMora > 0 ? factura.diasMora : '-'}
+                </td>
+                <td>${formatCurrency(factura.montoTotal)}</td>
+                <td class="mora-amount">
+                    ${factura.montoMora > 0 ? formatCurrency(factura.montoMora) : '-'}
+                </td>
+                <td class="total-amount">
+                    <strong>${formatCurrency(totalConMora)}</strong>
+                </td>
+                <td>
+                    <span class="status-badge ${statusClass}">${statusText}</span>
+                </td>
+                <td class="actions">
+                    <button class="actions-btn btn-info" onclick="selectInvoiceForPayment('${factura._id}')" 
+                            title="Seleccionar para pago">
                         💰 Pagar
                     </button>
                 </td>
             </tr>
         `;
     }).join('');
+    
+    // Actualizar controles de paginación
+    updatePaginationControls();
 }
 
 /**
@@ -831,6 +878,12 @@ function setupEventListeners() {
         refreshBtn.addEventListener('click', refreshData);
     }
     
+    // Filtros de búsqueda
+    setupSearchAndFilters();
+    
+    // Controles de paginación
+    setupPaginationControls();
+    
     // Cerrar modales
     document.querySelectorAll('.close, .modal-close').forEach(closeBtn => {
         closeBtn.addEventListener('click', function() {
@@ -844,6 +897,163 @@ function setupEventListeners() {
             event.target.style.display = 'none';
         }
     });
+}
+
+// ===============================================
+// FUNCIONES DE FILTRADO Y PAGINACIÓN
+// ===============================================
+
+/**
+ * Configurar filtros de búsqueda
+ */
+function setupSearchAndFilters() {
+    const searchInput = document.getElementById('searchPending');
+    const projectFilter = document.getElementById('projectFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    
+    // Búsqueda con debounce
+    let searchTimeout;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1; // Resetear a primera página
+            populatePendingInvoicesTable();
+        }, 300);
+    });
+    
+    // Filtros de proyecto y estado
+    projectFilter.addEventListener('change', function() {
+        currentPage = 1;
+        populatePendingInvoicesTable();
+    });
+    
+    statusFilter.addEventListener('change', function() {
+        currentPage = 1;
+        populatePendingInvoicesTable();
+    });
+}
+
+/**
+ * Aplicar filtros a las facturas
+ */
+function applyFilters() {
+    const searchTerm = document.getElementById('searchPending').value.toLowerCase();
+    const selectedProject = document.getElementById('projectFilter').value;
+    const selectedStatus = document.getElementById('statusFilter').value;
+    
+    filteredFacturas = facturasPendientes.filter(factura => {
+        const cliente = factura.clienteId;
+        
+        // Filtro de búsqueda
+        const matchesSearch = !searchTerm || 
+            (cliente?.nombre || '').toLowerCase().includes(searchTerm) ||
+            (cliente?.apellidos || '').toLowerCase().includes(searchTerm) ||
+            factura.numeroFactura.toLowerCase().includes(searchTerm) ||
+            (cliente?.proyecto || '').toLowerCase().includes(searchTerm);
+        
+        // Filtro de proyecto
+        const matchesProject = !selectedProject || 
+            (cliente?.proyecto || '').toLowerCase().includes(selectedProject.toLowerCase());
+        
+        // Filtro de estado
+        let matchesStatus = true;
+        if (selectedStatus) {
+            switch (selectedStatus) {
+                case 'pendiente':
+                    matchesStatus = factura.diasMora === 0;
+                    break;
+                case 'vencida':
+                    matchesStatus = factura.diasMora > 0 && factura.diasMora <= 30;
+                    break;
+                case 'mora':
+                    matchesStatus = factura.diasMora > 30;
+                    break;
+            }
+        }
+        
+        return matchesSearch && matchesProject && matchesStatus;
+    });
+}
+
+/**
+ * Configurar controles de paginación
+ */
+function setupPaginationControls() {
+    // Cambio de tamaño de página
+    document.getElementById('pageSizeSelect').addEventListener('change', function() {
+        pageSize = parseInt(this.value);
+        currentPage = 1;
+        populatePendingInvoicesTable();
+    });
+    
+    // Botones de navegación
+    document.getElementById('firstPageBtn').addEventListener('click', () => goToPage(1));
+    document.getElementById('prevPageBtn').addEventListener('click', () => goToPage(currentPage - 1));
+    document.getElementById('nextPageBtn').addEventListener('click', () => goToPage(currentPage + 1));
+    document.getElementById('lastPageBtn').addEventListener('click', () => goToPage(totalPages));
+}
+
+/**
+ * Ir a una página específica
+ */
+function goToPage(page) {
+    if (page < 1 || page > totalPages) return;
+    currentPage = page;
+    populatePendingInvoicesTable();
+}
+
+/**
+ * Actualizar controles de paginación
+ */
+function updatePaginationControls() {
+    const paginationContainer = document.getElementById('paginationContainer');
+    
+    if (totalRecords === 0) {
+        paginationContainer.classList.add('hidden');
+        return;
+    }
+    
+    paginationContainer.classList.remove('hidden');
+    
+    // Actualizar información
+    const startRecord = Math.min((currentPage - 1) * pageSize + 1, totalRecords);
+    const endRecord = Math.min(currentPage * pageSize, totalRecords);
+    document.getElementById('paginationInfo').textContent = 
+        `Mostrando ${startRecord}-${endRecord} de ${totalRecords} registros`;
+    
+    // Actualizar botones
+    document.getElementById('firstPageBtn').disabled = currentPage === 1;
+    document.getElementById('prevPageBtn').disabled = currentPage === 1;
+    document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+    document.getElementById('lastPageBtn').disabled = currentPage === totalPages;
+    
+    // Generar números de página
+    generatePageNumbers();
+}
+
+/**
+ * Generar números de página
+ */
+function generatePageNumbers() {
+    const pageNumbers = document.getElementById('pageNumbers');
+    let html = '';
+    
+    // Mostrar máximo 5 números de página
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        html += `
+            <button class="pagination-btn ${i === currentPage ? 'active' : ''}" 
+                    onclick="goToPage(${i})">${i}</button>
+        `;
+    }
+    
+    pageNumbers.innerHTML = html;
 }
 
 /**
