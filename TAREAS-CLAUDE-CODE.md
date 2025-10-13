@@ -1,883 +1,837 @@
-\# 🚀 TASKS FOR CLAUDE CODE - Sistema Agua LOTI
+# 🚀 TASKS FOR CLAUDE CODE - Sistema Agua LOTI
 
 
-
-\## 📖 HOW TO USE THIS FILE
-
+## 📖 HOW TO USE THIS FILE
 
 
-\### Preparation:
+### Preparation
 
-1\. Save this file as `TAREAS-CLAUDE-CODE.md` in the root of your agua-loti project
+1. Save this file as `TAREAS-CLAUDE-CODE.md` in the root of your agua-loti project
 
-2\. Open your terminal in the project folder
+2. Open your terminal in the project folder
 
-3\. Execute: `claude-code`
+3. Execute: `claude-code`
 
-4\. Follow the instructions phase by phase
+4. Follow the instructions phase by phase
 
 
+### Workflow
 
-\### Workflow:
-
-```
+```text
 
 YOU say → "Read TAREAS-CLAUDE-CODE.md and execute Phase 1"
 
-&nbsp;      ↓
+        ↓
 
 CLAUDE CODE → Creates/modifies files
 
-&nbsp;      ↓
+        ↓
 
 YOU review → Verify everything is correct
 
-&nbsp;      ↓
+        ↓
 
 YOU say → "Now execute Phase 2"
 
-&nbsp;      ↓
+        ↓
 
 And so on...
 
-```
+```text
 
 
+### ⚠️ CRITICAL RULES (Claude Code must follow)
 
-\### ⚠️ CRITICAL RULES (Claude Code must follow):
+1. **NEVER duplicate files** - Modify the originals directly
 
-1\. \*\*NEVER duplicate files\*\* - Modify the originals directly
+2. **Nomenclature ALWAYS in Spanish** - clienteId, facturaId, montoMora, etc.
 
-2\. \*\*Nomenclature ALWAYS in Spanish\*\* - clienteId, facturaId, montoMora, etc.
-
-3\. \*\*FEL only base structure\*\* - DO NOT implement real connection with Infile
-
+3. **FEL only base structure** - DO NOT implement real connection with Infile
 
 
 ---
 
 
-
-\## 🎯 PHASE 1: MODIFY FACTURA MODEL
-
+## 🎯 PHASE 1: MODIFY FACTURA MODEL
 
 
-\### Objective:
+### Objective
 
 Add fields for FEL, late fees (mora), and document reference to the EXISTING Factura model.
 
 
+### Instruction for Claude Code
 
-\### Instruction for Claude Code:
-
-```
+```text
 
 "Open the file backend/models/factura.model.js and add the following fields at the END of the existing schema. KEEP all fields that already exist. DO NOT create a new file, modify the existing one directly."
 
-```
+```text
 
 
-
-\### Código a agregar (después de los campos existentes):
+### Código a agregar (después de los campos existentes)
 
 ```javascript
 
 // ===== AGREGAR ESTOS CAMPOS AL SCHEMA EXISTENTE =====
 
 
-
 // Información de Factura Electrónica (FEL)
 
 fel: {
 
-&nbsp; certificada: { type: Boolean, default: false },
+   certificada: { type: Boolean, default: false },
 
-&nbsp; uuid: { type: String, default: null },
+   uuid: { type: String, default: null },
 
-&nbsp; numeroAutorizacion: { type: String, default: null },
+   numeroAutorizacion: { type: String, default: null },
 
-&nbsp; serie: { type: String, default: null },
+   serie: { type: String, default: null },
 
-&nbsp; numero: { type: String, default: null },
+   numero: { type: String, default: null },
 
-&nbsp; fechaCertificacion: { type: Date, default: null },
+   fechaCertificacion: { type: Date, default: null },
 
-&nbsp; urlVerificacion: { type: String, default: null },
+   urlVerificacion: { type: String, default: null },
 
-&nbsp; intentosFallidos: { type: Number, default: 0 },
+   intentosFallidos: { type: Number, default: 0 },
 
-&nbsp; ultimoError: { type: String, default: null },
+   ultimoError: { type: String, default: null },
 
-&nbsp; tipoDocumento: { 
+   tipoDocumento: { 
 
-&nbsp;   type: String, 
+     type: String, 
 
-&nbsp;   enum: \['FACT', 'NCRE', 'NDEB', 'NABN'],
+     enum: \['FACT', 'NCRE', 'NDEB', 'NABN'],
 
-&nbsp;   default: 'FACT'
+     default: 'FACT'
 
-&nbsp; }
+   }
 
 },
-
 
 
 // Referencia a documento original (para NCRE y NDEB)
 
 documentoReferencia: {
 
-&nbsp; tipo: { type: String, enum: \['factura', 'nota'], default: null },
+   tipo: { type: String, enum: \['factura', 'nota'], default: null },
 
-&nbsp; uuid: { type: String, default: null },
+   uuid: { type: String, default: null },
 
-&nbsp; numeroDocumento: { type: String, default: null }
+   numeroDocumento: { type: String, default: null }
 
 },
-
 
 
 // Información de mora detallada
 
 detallesMora: {
 
-&nbsp; diasVencidos: { type: Number, default: 0 },
+   diasVencidos: { type: Number, default: 0 },
 
-&nbsp; mesesCompletos: { type: Number, default: 0 },
+   mesesCompletos: { type: Number, default: 0 },
 
-&nbsp; porcentajeMora: { type: Number, default: 0 },
+   porcentajeMora: { type: Number, default: 0 },
 
-&nbsp; calculadoEn: { type: Date, default: null }
+   calculadoEn: { type: Date, default: null }
 
 }
 
-```
+```text
 
 
-
-\### ✅ Validation:
+### ✅ Validation
 
 Check that `backend/models/factura.model.js`:
 
-\- Has the 3 new fields (fel, documentoReferencia, detallesMora)
+- Has the 3 new fields (fel, documentoReferencia, detallesMora)
 
-\- Keeps ALL the fields it already had
+- Keeps ALL the fields it already had
 
-\- NO file exists like `factura.model.nuevo.js` or similar
-
+- NO file exists like `factura.model.nuevo.js` or similar
 
 
 ---
 
 
-
-\## 🎯 PHASE 2: MODIFY CLIENTE MODEL
-
+## 🎯 PHASE 2: MODIFY CLIENTE MODEL
 
 
-\### Objective:
+### Objective
 
 Add reconnection and service status fields to the EXISTING Cliente model.
 
 
+### Instruction for Claude Code
 
-\### Instruction for Claude Code:
-
-```
+```text
 
 "Open backend/models/cliente.model.js and add these fields to the existing schema. KEEP all original fields. DO NOT create a new file."
 
-```
+```text
 
 
-
-\### Código a agregar:
+### Código a agregar
 
 ```javascript
 
 // ===== AGREGAR AL SCHEMA EXISTENTE =====
 
 
-
 // Información de reconexiones
 
 numeroReconexiones: {
 
-&nbsp; type: Number,
+   type: Number,
 
-&nbsp; default: 0,
+   default: 0,
 
-&nbsp; min: 0
+   min: 0
 
 },
-
 
 
 fechaUltimaReconexion: {
 
-&nbsp; type: Date,
+   type: Date,
 
-&nbsp; default: null
+   default: null
 
 },
-
 
 
 // Estado de servicio
 
 estadoServicio: {
 
-&nbsp; type: String,
+   type: String,
 
-&nbsp; enum: \['activo', 'suspendido', 'cortado'],
+   enum: \['activo', 'suspendido', 'cortado'],
 
-&nbsp; default: 'activo'
+   default: 'activo'
 
 },
-
 
 
 // Notas de alerta
 
 alertas: \[{
 
-&nbsp; tipo: { type: String, enum: \['mora', 'corte', 'reconexion'] },
+   tipo: { type: String, enum: \['mora', 'corte', 'reconexion'] },
 
-&nbsp; mensaje: { type: String },
+   mensaje: { type: String },
 
-&nbsp; fecha: { type: Date, default: Date.now }
+   fecha: { type: Date, default: Date.now }
 
 }]
 
-```
+```text
 
 
+### ✅ Validation
 
-\### ✅ Validation:
+- `backend/models/cliente.model.js` has the 4 new fields
 
-\- `backend/models/cliente.model.js` has the 4 new fields
+- Keeps all original fields
 
-\- Keeps all original fields
-
-\- NO duplicate file exists
-
+- NO duplicate file exists
 
 
 ---
 
 
-
-\## 🎯 PHASE 3: CREATE MORA SERVICE
-
+## 🎯 PHASE 3: CREATE MORA SERVICE
 
 
-\### Objective:
+### Objective
 
 Create the service that calculates accumulated late fees for clients.
 
 
+### Instruction for Claude Code
 
-\### Instruction for Claude Code:
-
-```
+```text
 
 "Create the file backend/services/mora.service.js with the following complete code:"
 
-```
+```text
 
 
-
-\### Código completo:
+### Código completo
 
 ```javascript
 
-/\*\*
+/**
 
-&nbsp;\* Servicio de Cálculo de Mora Acumulada
+  \* Servicio de Cálculo de Mora Acumulada
 
-&nbsp;\* Sistema de Agua LOTI - Huehuetenango, Guatemala
+  \* Sistema de Agua LOTI - Huehuetenango, Guatemala
 
-&nbsp;\*/
-
+  \*/
 
 
 const Factura = require('../models/factura.model');
 
 
-
 class MoraService {
 
-&nbsp; constructor() {
+   constructor() {
 
-&nbsp;   this.MORA\_MENSUAL = 0.07; // 7% mensual
+     this.MORA\_MENSUAL = 0.07; // 7% mensual
 
-&nbsp; }
+   }
 
 
+   /**
 
-&nbsp; /\*\*
+    \* Calcula mora acumulada para un cliente con múltiples facturas vencidas
 
-&nbsp;  \* Calcula mora acumulada para un cliente con múltiples facturas vencidas
+    \* @param {String} clienteId - ID del cliente
 
-&nbsp;  \* @param {String} clienteId - ID del cliente
+    \* @returns {Object} Detalle completo de mora
 
-&nbsp;  \* @returns {Object} Detalle completo de mora
+    \*/
 
-&nbsp;  \*/
+   async calcularMoraAcumuladaCliente(clienteId) {
 
-&nbsp; async calcularMoraAcumuladaCliente(clienteId) {
+     try {
 
-&nbsp;   try {
+       // Obtener todas las facturas pendientes del cliente, ordenadas por antigüedad
 
-&nbsp;     // Obtener todas las facturas pendientes del cliente, ordenadas por antigüedad
+       const facturasPendientes = await Factura.find({
 
-&nbsp;     const facturasPendientes = await Factura.find({
+         clienteId: clienteId,
 
-&nbsp;       clienteId: clienteId,
+         estado: 'pendiente'
 
-&nbsp;       estado: 'pendiente'
+       }).sort({ fechaEmision: 1 }); // Más antiguas primero
 
-&nbsp;     }).sort({ fechaEmision: 1 }); // Más antiguas primero
+       
 
-&nbsp;     
+       if (facturasPendientes.length === 0) {
 
-&nbsp;     if (facturasPendientes.length === 0) {
+         return {
 
-&nbsp;       return {
+           tieneDeuda: false,
 
-&nbsp;         tieneDeuda: false,
+           facturasPendientes: 0,
 
-&nbsp;         facturasPendientes: 0,
+           mesesAtrasados: 0,
 
-&nbsp;         mesesAtrasados: 0,
+           montoOriginalTotal: 0,
 
-&nbsp;         montoOriginalTotal: 0,
+           moraTotal: 0,
 
-&nbsp;         moraTotal: 0,
+           totalAPagar: 0,
 
-&nbsp;         totalAPagar: 0,
+           detalleFacturas: \[]
 
-&nbsp;         detalleFacturas: \[]
+         };
 
-&nbsp;       };
+       }
 
-&nbsp;     }
+       
 
-&nbsp;     
+       const hoy = new Date();
 
-&nbsp;     const hoy = new Date();
+       let montoOriginalTotal = 0;
 
-&nbsp;     let montoOriginalTotal = 0;
+       let moraTotal = 0;
 
-&nbsp;     let moraTotal = 0;
+       const detalleFacturas = \[];
 
-&nbsp;     const detalleFacturas = \[];
+       
 
-&nbsp;     
+       for (const factura of facturasPendientes) {
 
-&nbsp;     for (const factura of facturasPendientes) {
+         const detalleFactura = this.calcularMoraFactura(factura, hoy);
 
-&nbsp;       const detalleFactura = this.calcularMoraFactura(factura, hoy);
+         detalleFacturas.push(detalleFactura);
 
-&nbsp;       detalleFacturas.push(detalleFactura);
+         
 
-&nbsp;       
+         montoOriginalTotal += detalleFactura.montoOriginal;
 
-&nbsp;       montoOriginalTotal += detalleFactura.montoOriginal;
+         moraTotal += detalleFactura.montoMora;
 
-&nbsp;       moraTotal += detalleFactura.montoMora;
+       }
 
-&nbsp;     }
+       
 
-&nbsp;     
+       const totalAPagar = montoOriginalTotal + moraTotal;
 
-&nbsp;     const totalAPagar = montoOriginalTotal + moraTotal;
+       
 
-&nbsp;     
+       // Determinar nivel de criticidad
 
-&nbsp;     // Determinar nivel de criticidad
+       const mesesAtrasados = detalleFacturas.length;
 
-&nbsp;     const mesesAtrasados = detalleFacturas.length;
+       let nivelCriticidad = 'bajo';
 
-&nbsp;     let nivelCriticidad = 'bajo';
+       if (mesesAtrasados >= 3) nivelCriticidad = 'critico';
 
-&nbsp;     if (mesesAtrasados >= 3) nivelCriticidad = 'critico';
+       else if (mesesAtrasados >= 2) nivelCriticidad = 'alto';
 
-&nbsp;     else if (mesesAtrasados >= 2) nivelCriticidad = 'alto';
+       else if (mesesAtrasados >= 1) nivelCriticidad = 'medio';
 
-&nbsp;     else if (mesesAtrasados >= 1) nivelCriticidad = 'medio';
+       
 
-&nbsp;     
+       // Determinar si requiere reconexión
 
-&nbsp;     // Determinar si requiere reconexión
+       const requiereReconexion = mesesAtrasados >= 2;
 
-&nbsp;     const requiereReconexion = mesesAtrasados >= 2;
+       
 
-&nbsp;     
+       return {
 
-&nbsp;     return {
+         tieneDeuda: true,
 
-&nbsp;       tieneDeuda: true,
+         facturasPendientes: facturasPendientes.length,
 
-&nbsp;       facturasPendientes: facturasPendientes.length,
+         mesesAtrasados: mesesAtrasados,
 
-&nbsp;       mesesAtrasados: mesesAtrasados,
+         montoOriginalTotal: Math.round(montoOriginalTotal \* 100) / 100,
 
-&nbsp;       montoOriginalTotal: Math.round(montoOriginalTotal \* 100) / 100,
+         moraTotal: Math.round(moraTotal \* 100) / 100,
 
-&nbsp;       moraTotal: Math.round(moraTotal \* 100) / 100,
+         totalAPagar: Math.round(totalAPagar \* 100) / 100,
 
-&nbsp;       totalAPagar: Math.round(totalAPagar \* 100) / 100,
+         nivelCriticidad,
 
-&nbsp;       nivelCriticidad,
+         requiereReconexion,
 
-&nbsp;       requiereReconexion,
+         costoReconexion: requiereReconexion ? 125.00 : 0,
 
-&nbsp;       costoReconexion: requiereReconexion ? 125.00 : 0,
+         detalleFacturas,
 
-&nbsp;       detalleFacturas,
+         facturasMasAntigua: detalleFacturas\[0],
 
-&nbsp;       facturasMasAntigua: detalleFacturas\[0],
+         facturasMasReciente: detalleFacturas\[detalleFacturas.length - 1]
 
-&nbsp;       facturasMasReciente: detalleFacturas\[detalleFacturas.length - 1]
+       };
 
-&nbsp;     };
+       
 
-&nbsp;     
+     } catch (error) {
 
-&nbsp;   } catch (error) {
+       console.error('\[MoraService] Error al calcular mora acumulada:', error);
 
-&nbsp;     console.error('\[MoraService] Error al calcular mora acumulada:', error);
+       throw new Error(`Error al calcular mora: ${error.message}`);
 
-&nbsp;     throw new Error(`Error al calcular mora: ${error.message}`);
+     }
 
-&nbsp;   }
+   }
 
-&nbsp; }
 
+   /**
 
+    \* Calcula mora para una factura individual
 
-&nbsp; /\*\*
+    \* @param {Object} factura - Documento de factura
 
-&nbsp;  \* Calcula mora para una factura individual
+    \* @param {Date} fechaCalculo - Fecha para calcular (default: hoy)
 
-&nbsp;  \* @param {Object} factura - Documento de factura
+    \*/
 
-&nbsp;  \* @param {Date} fechaCalculo - Fecha para calcular (default: hoy)
+   calcularMoraFactura(factura, fechaCalculo = new Date()) {
 
-&nbsp;  \*/
+     const fechaVencimiento = new Date(factura.fechaVencimiento);
 
-&nbsp; calcularMoraFactura(factura, fechaCalculo = new Date()) {
+     
 
-&nbsp;   const fechaVencimiento = new Date(factura.fechaVencimiento);
+     // Si no está vencida
 
-&nbsp;   
+     if (fechaCalculo <= fechaVencimiento) {
 
-&nbsp;   // Si no está vencida
+       return {
 
-&nbsp;   if (fechaCalculo <= fechaVencimiento) {
+         facturaId: factura.\_id,
 
-&nbsp;     return {
+         numeroFactura: factura.numeroFactura,
 
-&nbsp;       facturaId: factura.\_id,
+         fechaEmision: factura.fechaEmision,
 
-&nbsp;       numeroFactura: factura.numeroFactura,
+         fechaVencimiento: factura.fechaVencimiento,
 
-&nbsp;       fechaEmision: factura.fechaEmision,
+         montoOriginal: factura.montoTotal,
 
-&nbsp;       fechaVencimiento: factura.fechaVencimiento,
+         diasVencidos: 0,
 
-&nbsp;       montoOriginal: factura.montoTotal,
+         mesesCompletos: 0,
 
-&nbsp;       diasVencidos: 0,
+         porcentajeMora: 0,
 
-&nbsp;       mesesCompletos: 0,
+         montoMora: 0,
 
-&nbsp;       porcentajeMora: 0,
+         totalConMora: factura.montoTotal,
 
-&nbsp;       montoMora: 0,
+         estado: 'vigente'
 
-&nbsp;       totalConMora: factura.montoTotal,
+       };
 
-&nbsp;       estado: 'vigente'
+     }
 
-&nbsp;     };
+     
 
-&nbsp;   }
+     // Calcular días vencidos
 
-&nbsp;   
+     const diasVencidos = Math.floor((fechaCalculo - fechaVencimiento) / (1000 \* 60 \* 60 \* 24));
 
-&nbsp;   // Calcular días vencidos
+     
 
-&nbsp;   const diasVencidos = Math.floor((fechaCalculo - fechaVencimiento) / (1000 \* 60 \* 60 \* 24));
+     // Calcular meses completos
 
-&nbsp;   
+     const mesesCompletos = Math.floor(diasVencidos / 30);
 
-&nbsp;   // Calcular meses completos
+     
 
-&nbsp;   const mesesCompletos = Math.floor(diasVencidos / 30);
+     // Calcular porcentaje de mora
 
-&nbsp;   
+     const porcentajeMora = mesesCompletos \* this.MORA\_MENSUAL;
 
-&nbsp;   // Calcular porcentaje de mora
+     
 
-&nbsp;   const porcentajeMora = mesesCompletos \* this.MORA\_MENSUAL;
+     // Calcular monto de mora
 
-&nbsp;   
+     const montoMora = factura.montoTotal \* porcentajeMora;
 
-&nbsp;   // Calcular monto de mora
+     
 
-&nbsp;   const montoMora = factura.montoTotal \* porcentajeMora;
+     // Total con mora
 
-&nbsp;   
+     const totalConMora = factura.montoTotal + montoMora;
 
-&nbsp;   // Total con mora
+     
 
-&nbsp;   const totalConMora = factura.montoTotal + montoMora;
+     return {
 
-&nbsp;   
+       facturaId: factura.\_id,
 
-&nbsp;   return {
+       numeroFactura: factura.numeroFactura,
 
-&nbsp;     facturaId: factura.\_id,
+       fechaEmision: factura.fechaEmision,
 
-&nbsp;     numeroFactura: factura.numeroFactura,
+       fechaVencimiento: factura.fechaVencimiento,
 
-&nbsp;     fechaEmision: factura.fechaEmision,
+       montoOriginal: factura.montoTotal,
 
-&nbsp;     fechaVencimiento: factura.fechaVencimiento,
+       diasVencidos,
 
-&nbsp;     montoOriginal: factura.montoTotal,
+       mesesCompletos,
 
-&nbsp;     diasVencidos,
+       porcentajeMora: Math.round(porcentajeMora \* 10000) / 100,
 
-&nbsp;     mesesCompletos,
+       montoMora: Math.round(montoMora \* 100) / 100,
 
-&nbsp;     porcentajeMora: Math.round(porcentajeMora \* 10000) / 100,
+       totalConMora: Math.round(totalConMora \* 100) / 100,
 
-&nbsp;     montoMora: Math.round(montoMora \* 100) / 100,
+       estado: mesesCompletos >= 2 ? 'critico' : 'vencido'
 
-&nbsp;     totalConMora: Math.round(totalConMora \* 100) / 100,
+     };
 
-&nbsp;     estado: mesesCompletos >= 2 ? 'critico' : 'vencido'
+   }
 
-&nbsp;   };
 
-&nbsp; }
+   /**
 
+    \* Verifica si un cliente requiere corte de servicio
 
+    \* @param {String} clienteId 
 
-&nbsp; /\*\*
+    \*/
 
-&nbsp;  \* Verifica si un cliente requiere corte de servicio
+   async requiereCorteServicio(clienteId) {
 
-&nbsp;  \* @param {String} clienteId 
+     try {
 
-&nbsp;  \*/
+       const mora = await this.calcularMoraAcumuladaCliente(clienteId);
 
-&nbsp; async requiereCorteServicio(clienteId) {
+       
 
-&nbsp;   try {
+       return {
 
-&nbsp;     const mora = await this.calcularMoraAcumuladaCliente(clienteId);
+         requiereCorte: mora.mesesAtrasados >= 2,
 
-&nbsp;     
+         mesesAtrasados: mora.mesesAtrasados,
 
-&nbsp;     return {
+         montoAdeudado: mora.totalAPagar,
 
-&nbsp;       requiereCorte: mora.mesesAtrasados >= 2,
+         razon: mora.mesesAtrasados >= 2 
 
-&nbsp;       mesesAtrasados: mora.mesesAtrasados,
+           ? `Cliente con ${mora.mesesAtrasados} meses sin pagar` 
 
-&nbsp;       montoAdeudado: mora.totalAPagar,
+           : 'No requiere corte'
 
-&nbsp;       razon: mora.mesesAtrasados >= 2 
+       };
 
-&nbsp;         ? `Cliente con ${mora.mesesAtrasados} meses sin pagar` 
+     } catch (error) {
 
-&nbsp;         : 'No requiere corte'
+       console.error('\[MoraService] Error al verificar corte:', error);
 
-&nbsp;     };
+       throw error;
 
-&nbsp;   } catch (error) {
+     }
 
-&nbsp;     console.error('\[MoraService] Error al verificar corte:', error);
-
-&nbsp;     throw error;
-
-&nbsp;   }
-
-&nbsp; }
+   }
 
 }
 
 
-
 module.exports = new MoraService();
 
-```
+```text
 
 
+### ✅ Validation
 
-\### ✅ Validation:
+- File `backend/services/mora.service.js` exists
 
-\- File `backend/services/mora.service.js` exists
-
-\- Has 3 methods: calcularMoraAcumuladaCliente, calcularMoraFactura, requiereCorteServicio
-
+- Has 3 methods: calcularMoraAcumuladaCliente, calcularMoraFactura, requiereCorteServicio
 
 
 ---
 
 
-
-\## 🎯 PHASE 4: CREATE RECONEXION AND LOG FEL MODELS
-
+## 🎯 PHASE 4: CREATE RECONEXION AND LOG FEL MODELS
 
 
-\### Objective:
+### Objective
 
 Create models for reconnection history and FEL logs.
 
 
+### Instruction for Claude Code
 
-\### Instruction for Claude Code:
-
-```
+```text
 
 "Create these two new files with their complete code:"
 
-```
+```text
 
 
-
-\### File 1: `backend/models/reconexion.model.js`
+### File 1 `backend/models/reconexion.model.js`
 
 ```javascript
 
 const mongoose = require('mongoose');
 
 
-
 const reconexionSchema = new mongoose.Schema({
 
-&nbsp; clienteId: {
+   clienteId: {
 
-&nbsp;   type: mongoose.Schema.Types.ObjectId,
+     type: mongoose.Schema.Types.ObjectId,
 
-&nbsp;   ref: 'Cliente',
+     ref: 'Cliente',
 
-&nbsp;   required: true
+     required: true
 
-&nbsp; },
+   },
 
-&nbsp; tipoOpcion: {
+   tipoOpcion: {
 
-&nbsp;   type: String,
+     type: String,
 
-&nbsp;   enum: \['parcial', 'total', 'emergencia'],
+     enum: \['parcial', 'total', 'emergencia'],
 
-&nbsp;   required: true
+     required: true
 
-&nbsp; },
+   },
 
-&nbsp; montoTotal: {
+   montoTotal: {
 
-&nbsp;   type: Number,
+     type: Number,
 
-&nbsp;   required: true,
+     required: true,
 
-&nbsp;   min: 0
+     min: 0
 
-&nbsp; },
+   },
 
-&nbsp; montoDeuda: {
+   montoDeuda: {
 
-&nbsp;   type: Number,
+     type: Number,
 
-&nbsp;   required: true,
+     required: true,
 
-&nbsp;   min: 0
+     min: 0
 
-&nbsp; },
+   },
 
-&nbsp; costoReconexion: {
+   costoReconexion: {
 
-&nbsp;   type: Number,
+     type: Number,
 
-&nbsp;   required: true,
+     required: true,
 
-&nbsp;   default: 125.00
+     default: 125.00
 
-&nbsp; },
+   },
 
-&nbsp; saldoPendiente: {
+   saldoPendiente: {
 
-&nbsp;   type: Number,
+     type: Number,
 
-&nbsp;   default: 0,
+     default: 0,
 
-&nbsp;   min: 0
+     min: 0
 
-&nbsp; },
+   },
 
-&nbsp; facturasPagadas: \[{
+   facturasPagadas: \[{
 
-&nbsp;   type: mongoose.Schema.Types.ObjectId,
+     type: mongoose.Schema.Types.ObjectId,
 
-&nbsp;   ref: 'Factura'
+     ref: 'Factura'
 
-&nbsp; }],
+   }],
 
-&nbsp; metodoPago: {
+   metodoPago: {
 
-&nbsp;   type: String,
+     type: String,
 
-&nbsp;   required: true
+     required: true
 
-&nbsp; },
+   },
 
-&nbsp; referencia: String,
+   referencia: String,
 
-&nbsp; procesadoPor: {
+   procesadoPor: {
 
-&nbsp;   type: mongoose.Schema.Types.ObjectId,
+     type: mongoose.Schema.Types.ObjectId,
 
-&nbsp;   ref: 'User',
+     ref: 'User',
 
-&nbsp;   required: true
+     required: true
 
-&nbsp; },
+   },
 
-&nbsp; fechaReconexion: {
+   fechaReconexion: {
 
-&nbsp;   type: Date,
+     type: Date,
 
-&nbsp;   default: Date.now
+     default: Date.now
 
-&nbsp; },
+   },
 
-&nbsp; observaciones: String,
+   observaciones: String,
 
-&nbsp; 
+   
 
-&nbsp; // Campos para reconexión de emergencia
+   // Campos para reconexión de emergencia
 
-&nbsp; esEmergencia: {
+   esEmergencia: {
 
-&nbsp;   type: Boolean,
+     type: Boolean,
 
-&nbsp;   default: false
+     default: false
 
-&nbsp; },
+   },
 
-&nbsp; justificacion: String,
+   justificacion: String,
 
-&nbsp; autorizadoPor: {
+   autorizadoPor: {
 
-&nbsp;   type: mongoose.Schema.Types.ObjectId,
+     type: mongoose.Schema.Types.ObjectId,
 
-&nbsp;   ref: 'User'
+     ref: 'User'
 
-&nbsp; }
+   }
 
 }, {
 
-&nbsp; timestamps: true
+   timestamps: true
 
 });
-
 
 
 reconexionSchema.index({ clienteId: 1, fechaReconexion: -1 });
 
 
-
 module.exports = mongoose.model('Reconexion', reconexionSchema);
 
-```
+```text
 
 
-
-\### File 2: `backend/models/logFel.model.js`
+### File 2 `backend/models/logFel.model.js`
 
 ```javascript
 
 const mongoose = require('mongoose');
 
 
-
 const logFelSchema = new mongoose.Schema({
 
-&nbsp; facturaId: {
+   facturaId: {
 
-&nbsp;   type: mongoose.Schema.Types.ObjectId,
+     type: mongoose.Schema.Types.ObjectId,
 
-&nbsp;   ref: 'Factura',
+     ref: 'Factura',
 
-&nbsp;   required: true
+     required: true
 
-&nbsp; },
+   },
 
-&nbsp; tipo: {
+   tipo: {
 
-&nbsp;   type: String,
+     type: String,
 
-&nbsp;   enum: \['certificacion', 'anulacion', 'consulta'],
+     enum: \['certificacion', 'anulacion', 'consulta'],
 
-&nbsp;   required: true
+     required: true
 
-&nbsp; },
+   },
 
-&nbsp; estado: {
+   estado: {
 
-&nbsp;   type: String,
+     type: String,
 
-&nbsp;   enum: \['exitoso', 'error', 'pendiente'],
+     enum: \['exitoso', 'error', 'pendiente'],
 
-&nbsp;   required: true
+     required: true
 
-&nbsp; },
+   },
 
-&nbsp; intentos: {
+   intentos: {
 
-&nbsp;   type: Number,
+     type: Number,
 
-&nbsp;   default: 1
+     default: 1
 
-&nbsp; },
+   },
 
-&nbsp; respuesta: {
+   respuesta: {
 
-&nbsp;   type: mongoose.Schema.Types.Mixed
+     type: mongoose.Schema.Types.Mixed
 
-&nbsp; },
+   },
 
-&nbsp; error: {
+   error: {
 
-&nbsp;   type: String
+     type: String
 
-&nbsp; },
+   },
 
-&nbsp; detalles: {
+   detalles: {
 
-&nbsp;   type: mongoose.Schema.Types.Mixed
+     type: mongoose.Schema.Types.Mixed
 
-&nbsp; },
+   },
 
-&nbsp; timestamp: {
+   timestamp: {
 
-&nbsp;   type: Date,
+     type: Date,
 
-&nbsp;   default: Date.now
+     default: Date.now
 
-&nbsp; }
+   }
 
 }, {
 
-&nbsp; timestamps: true
+   timestamps: true
 
 });
-
 
 
 logFelSchema.index({ facturaId: 1, timestamp: -1 });
@@ -885,57 +839,49 @@ logFelSchema.index({ facturaId: 1, timestamp: -1 });
 logFelSchema.index({ estado: 1, timestamp: -1 });
 
 
-
 module.exports = mongoose.model('LogFEL', logFelSchema);
 
-```
+```text
 
 
+### ✅ Validation
 
-\### ✅ Validation:
+- Files `backend/models/reconexion.model.js` and `backend/models/logFel.model.js` exist
 
-\- Files `backend/models/reconexion.model.js` and `backend/models/logFel.model.js` exist
-
-\- Both export mongoose models
-
+- Both export mongoose models
 
 
 ---
 
 
-
-\## 🎯 PHASE 5: CREATE RECONEXION SERVICE
-
+## 🎯 PHASE 5: CREATE RECONEXION SERVICE
 
 
-\### Objective:
+### Objective
 
 Create the service that handles reconnection options and process.
 
 
+### Instruction for Claude Code
 
-\### Instruction for Claude Code:
-
-```
+```text
 
 "Create backend/services/reconexion.service.js with this complete code:"
 
-```
+```text
 
 
-
-\### Complete code:
+### Complete code
 
 ```javascript
 
-/\*\*
+/**
 
-&nbsp;\* Servicio de Reconexión de Servicio de Agua
+  \* Servicio de Reconexión de Servicio de Agua
 
-&nbsp;\* Maneja reconexiones con opciones 80% y 100%
+  \* Maneja reconexiones con opciones 80% y 100%
 
-&nbsp;\*/
-
+  \*/
 
 
 const Factura = require('../models/factura.model');
@@ -949,1154 +895,1115 @@ const moraService = require('./mora.service');
 const mongoose = require('mongoose');
 
 
-
 class ReconexionService {
 
-&nbsp; constructor() {
+   constructor() {
 
-&nbsp;   this.COSTO\_RECONEXION = 125.00;
+     this.COSTO\_RECONEXION = 125.00;
 
-&nbsp;   this.PORCENTAJE\_PAGO\_PARCIAL = 0.80; // 80%
+     this.PORCENTAJE\_PAGO\_PARCIAL = 0.80; // 80%
 
-&nbsp; }
+   }
 
 
+   /**
 
-&nbsp; /\*\*
+    \* Calcula las opciones de reconexión disponibles para un cliente
 
-&nbsp;  \* Calcula las opciones de reconexión disponibles para un cliente
+    \* @param {String} clienteId - ID del cliente
 
-&nbsp;  \* @param {String} clienteId - ID del cliente
+    \*/
 
-&nbsp;  \*/
+   async calcularOpcionesReconexion(clienteId) {
 
-&nbsp; async calcularOpcionesReconexion(clienteId) {
+     try {
 
-&nbsp;   try {
+       // Obtener información de mora del cliente
 
-&nbsp;     // Obtener información de mora del cliente
+       const mora = await moraService.calcularMoraAcumuladaCliente(clienteId);
 
-&nbsp;     const mora = await moraService.calcularMoraAcumuladaCliente(clienteId);
+       
 
-&nbsp;     
+       if (!mora.requiereReconexion) {
 
-&nbsp;     if (!mora.requiereReconexion) {
+         return {
 
-&nbsp;       return {
+           requiereReconexion: false,
 
-&nbsp;         requiereReconexion: false,
+           mensaje: 'El cliente no requiere reconexión',
 
-&nbsp;         mensaje: 'El cliente no requiere reconexión',
+           mesesAtrasados: mora.mesesAtrasados
 
-&nbsp;         mesesAtrasados: mora.mesesAtrasados
+         };
 
-&nbsp;       };
+       }
 
-&nbsp;     }
+       
 
-&nbsp;     
+       // OPCIÓN 1: Pago del 80% + reconexión
 
-&nbsp;     // OPCIÓN 1: Pago del 80% + reconexión
+       const montoPagoParcial = mora.totalAPagar \* this.PORCENTAJE\_PAGO\_PARCIAL;
 
-&nbsp;     const montoPagoParcial = mora.totalAPagar \* this.PORCENTAJE\_PAGO\_PARCIAL;
+       const totalOpcion80 = montoPagoParcial + this.COSTO\_RECONEXION;
 
-&nbsp;     const totalOpcion80 = montoPagoParcial + this.COSTO\_RECONEXION;
+       const saldoPendienteOpcion80 = mora.totalAPagar - montoPagoParcial;
 
-&nbsp;     const saldoPendienteOpcion80 = mora.totalAPagar - montoPagoParcial;
+       
 
-&nbsp;     
+       // OPCIÓN 2: Pago del 100% + reconexión
 
-&nbsp;     // OPCIÓN 2: Pago del 100% + reconexión
+       const totalOpcion100 = mora.totalAPagar + this.COSTO\_RECONEXION;
 
-&nbsp;     const totalOpcion100 = mora.totalAPagar + this.COSTO\_RECONEXION;
+       
 
-&nbsp;     
+       // Determinar qué facturas se pagarían con cada opción
 
-&nbsp;     // Determinar qué facturas se pagarían con cada opción
+       const facturasOpcion80 = this.determinarFacturasAPagar(
 
-&nbsp;     const facturasOpcion80 = this.determinarFacturasAPagar(
+         mora.detalleFacturas, 
 
-&nbsp;       mora.detalleFacturas, 
+         montoPagoParcial
 
-&nbsp;       montoPagoParcial
+       );
 
-&nbsp;     );
+       
 
-&nbsp;     
+       return {
 
-&nbsp;     return {
+         requiereReconexion: true,
 
-&nbsp;       requiereReconexion: true,
+         clienteId,
 
-&nbsp;       clienteId,
+         mesesAtrasados: mora.mesesAtrasados,
 
-&nbsp;       mesesAtrasados: mora.mesesAtrasados,
+         deudaTotal: mora.totalAPagar,
 
-&nbsp;       deudaTotal: mora.totalAPagar,
+         costoReconexion: this.COSTO\_RECONEXION,
 
-&nbsp;       costoReconexion: this.COSTO\_RECONEXION,
+         
 
-&nbsp;       
+         // OPCIÓN 1: Pago Parcial (80%)
 
-&nbsp;       // OPCIÓN 1: Pago Parcial (80%)
+         opcionParcial: {
 
-&nbsp;       opcionParcial: {
+           descripcion: 'Pago del 80% de la deuda + reconexión',
 
-&nbsp;         descripcion: 'Pago del 80% de la deuda + reconexión',
+           porcentajeRequerido: 80,
 
-&nbsp;         porcentajeRequerido: 80,
+           montoDeuda: Math.round(montoPagoParcial \* 100) / 100,
 
-&nbsp;         montoDeuda: Math.round(montoPagoParcial \* 100) / 100,
+           costoReconexion: this.COSTO\_RECONEXION,
 
-&nbsp;         costoReconexion: this.COSTO\_RECONEXION,
+           totalAPagar: Math.round(totalOpcion80 \* 100) / 100,
 
-&nbsp;         totalAPagar: Math.round(totalOpcion80 \* 100) / 100,
+           saldoPendiente: Math.round(saldoPendienteOpcion80 \* 100) / 100,
 
-&nbsp;         saldoPendiente: Math.round(saldoPendienteOpcion80 \* 100) / 100,
+           facturasQueSePagan: facturasOpcion80.pagadas,
 
-&nbsp;         facturasQueSePagan: facturasOpcion80.pagadas,
+           facturasQuedanPendientes: facturasOpcion80.pendientes
 
-&nbsp;         facturasQuedanPendientes: facturasOpcion80.pendientes
+         },
 
-&nbsp;       },
+         
 
-&nbsp;       
+         // OPCIÓN 2: Pago Total (100%)
 
-&nbsp;       // OPCIÓN 2: Pago Total (100%)
+         opcionTotal: {
 
-&nbsp;       opcionTotal: {
+           descripcion: 'Pago del 100% de la deuda + reconexión',
 
-&nbsp;         descripcion: 'Pago del 100% de la deuda + reconexión',
+           porcentajeRequerido: 100,
 
-&nbsp;         porcentajeRequerido: 100,
+           montoDeuda: mora.totalAPagar,
 
-&nbsp;         montoDeuda: mora.totalAPagar,
+           costoReconexion: this.COSTO\_RECONEXION,
 
-&nbsp;         costoReconexion: this.COSTO\_RECONEXION,
+           totalAPagar: Math.round(totalOpcion100 \* 100) / 100,
 
-&nbsp;         totalAPagar: Math.round(totalOpcion100 \* 100) / 100,
+           saldoPendiente: 0,
 
-&nbsp;         saldoPendiente: 0,
+           facturasQueSePagan: mora.detalleFacturas.map(f => f.numeroFactura),
 
-&nbsp;         facturasQueSePagan: mora.detalleFacturas.map(f => f.numeroFactura),
+           facturasQuedanPendientes: \[],
 
-&nbsp;         facturasQuedanPendientes: \[],
+           descuento: this.calcularDescuentoLiquidacion(mora.totalAPagar)
 
-&nbsp;         descuento: this.calcularDescuentoLiquidacion(mora.totalAPagar)
+         },
 
-&nbsp;       },
+         
 
-&nbsp;       
+         // Detalles de las facturas
 
-&nbsp;       // Detalles de las facturas
+         detalleFacturas: mora.detalleFacturas
 
-&nbsp;       detalleFacturas: mora.detalleFacturas
+       };
 
-&nbsp;     };
+       
 
-&nbsp;     
+     } catch (error) {
 
-&nbsp;   } catch (error) {
+       console.error('\[ReconexionService] Error al calcular opciones:', error);
 
-&nbsp;     console.error('\[ReconexionService] Error al calcular opciones:', error);
+       throw new Error(`Error al calcular opciones de reconexión: ${error.message}`);
 
-&nbsp;     throw new Error(`Error al calcular opciones de reconexión: ${error.message}`);
+     }
 
-&nbsp;   }
+   }
 
-&nbsp; }
 
+   /**
 
+    \* Determina qué facturas se pueden pagar con un monto específico
 
-&nbsp; /\*\*
+    \* Estrategia: Pagar las facturas más antiguas primero (FIFO)
 
-&nbsp;  \* Determina qué facturas se pueden pagar con un monto específico
+    \*/
 
-&nbsp;  \* Estrategia: Pagar las facturas más antiguas primero (FIFO)
+   determinarFacturasAPagar(facturas, montoDisponible) {
 
-&nbsp;  \*/
+     const pagadas = \[];
 
-&nbsp; determinarFacturasAPagar(facturas, montoDisponible) {
+     const pendientes = \[];
 
-&nbsp;   const pagadas = \[];
+     let montoRestante = montoDisponible;
 
-&nbsp;   const pendientes = \[];
+     
 
-&nbsp;   let montoRestante = montoDisponible;
+     for (const factura of facturas) {
 
-&nbsp;   
+       if (montoRestante >= factura.totalConMora) {
 
-&nbsp;   for (const factura of facturas) {
+         pagadas.push({
 
-&nbsp;     if (montoRestante >= factura.totalConMora) {
+           numeroFactura: factura.numeroFactura,
 
-&nbsp;       pagadas.push({
+           monto: factura.totalConMora,
 
-&nbsp;         numeroFactura: factura.numeroFactura,
+           estado: 'se pagará completa'
 
-&nbsp;         monto: factura.totalConMora,
+         });
 
-&nbsp;         estado: 'se pagará completa'
+         montoRestante -= factura.totalConMora;
 
-&nbsp;       });
+       } else if (montoRestante > 0) {
 
-&nbsp;       montoRestante -= factura.totalConMora;
+         pagadas.push({
 
-&nbsp;     } else if (montoRestante > 0) {
+           numeroFactura: factura.numeroFactura,
 
-&nbsp;       pagadas.push({
+           monto: montoRestante,
 
-&nbsp;         numeroFactura: factura.numeroFactura,
+           estado: 'pago parcial'
 
-&nbsp;         monto: montoRestante,
+         });
 
-&nbsp;         estado: 'pago parcial'
+         pendientes.push({
 
-&nbsp;       });
+           numeroFactura: factura.numeroFactura,
 
-&nbsp;       pendientes.push({
+           montoRestante: factura.totalConMora - montoRestante,
 
-&nbsp;         numeroFactura: factura.numeroFactura,
+           estado: 'pendiente parcial'
 
-&nbsp;         montoRestante: factura.totalConMora - montoRestante,
+         });
 
-&nbsp;         estado: 'pendiente parcial'
+         montoRestante = 0;
 
-&nbsp;       });
+       } else {
 
-&nbsp;       montoRestante = 0;
+         pendientes.push({
 
-&nbsp;     } else {
+           numeroFactura: factura.numeroFactura,
 
-&nbsp;       pendientes.push({
+           montoRestante: factura.totalConMora,
 
-&nbsp;         numeroFactura: factura.numeroFactura,
+           estado: 'pendiente completa'
 
-&nbsp;         montoRestante: factura.totalConMora,
+         });
 
-&nbsp;         estado: 'pendiente completa'
+       }
 
-&nbsp;       });
+     }
 
-&nbsp;     }
+     
 
-&nbsp;   }
+     return { pagadas, pendientes };
 
-&nbsp;   
+   }
 
-&nbsp;   return { pagadas, pendientes };
 
-&nbsp; }
+   /**
 
+    \* Calcula descuento por liquidación total
 
+    \*/
 
-&nbsp; /\*\*
+   calcularDescuentoLiquidacion(montoTotal) {
 
-&nbsp;  \* Calcula descuento por liquidación total
+     const porcentajeDescuento = 0.05; // 5%
 
-&nbsp;  \*/
+     const montoDescuento = montoTotal \* porcentajeDescuento;
 
-&nbsp; calcularDescuentoLiquidacion(montoTotal) {
+     
 
-&nbsp;   const porcentajeDescuento = 0.05; // 5%
+     return {
 
-&nbsp;   const montoDescuento = montoTotal \* porcentajeDescuento;
+       aplicable: true,
 
-&nbsp;   
+       porcentaje: 5,
 
-&nbsp;   return {
+       montoDescuento: Math.round(montoDescuento \* 100) / 100,
 
-&nbsp;     aplicable: true,
+       totalConDescuento: Math.round((montoTotal - montoDescuento + this.COSTO\_RECONEXION) \* 100) / 100
 
-&nbsp;     porcentaje: 5,
+     };
 
-&nbsp;     montoDescuento: Math.round(montoDescuento \* 100) / 100,
+   }
 
-&nbsp;     totalConDescuento: Math.round((montoTotal - montoDescuento + this.COSTO\_RECONEXION) \* 100) / 100
 
-&nbsp;   };
+   /**
 
-&nbsp; }
+    \* Procesa el pago de reconexión
 
+    \*/
 
+   async procesarReconexion(clienteId, opcion, datosPago) {
 
-&nbsp; /\*\*
+     const session = await mongoose.startSession();
 
-&nbsp;  \* Procesa el pago de reconexión
+     session.startTransaction();
 
-&nbsp;  \*/
+     
 
-&nbsp; async procesarReconexion(clienteId, opcion, datosPago) {
+     try {
 
-&nbsp;   const session = await mongoose.startSession();
+       const opciones = await this.calcularOpcionesReconexion(clienteId);
 
-&nbsp;   session.startTransaction();
+       
 
-&nbsp;   
+       if (!opciones.requiereReconexion) {
 
-&nbsp;   try {
+         throw new Error('El cliente no requiere reconexión');
 
-&nbsp;     const opciones = await this.calcularOpcionesReconexion(clienteId);
+       }
 
-&nbsp;     
+       
 
-&nbsp;     if (!opciones.requiereReconexion) {
+       const opcionSeleccionada = opcion === 'total' 
 
-&nbsp;       throw new Error('El cliente no requiere reconexión');
+         ? opciones.opcionTotal 
 
-&nbsp;     }
+         : opciones.opcionParcial;
 
-&nbsp;     
+       
 
-&nbsp;     const opcionSeleccionada = opcion === 'total' 
+       // Validar monto pagado
 
-&nbsp;       ? opciones.opcionTotal 
+       if (Math.abs(datosPago.monto - opcionSeleccionada.totalAPagar) > 0.01) {
 
-&nbsp;       : opciones.opcionParcial;
+         throw new Error(
 
-&nbsp;     
+           `El monto pagado (Q${datosPago.monto}) no coincide con ` +
 
-&nbsp;     // Validar monto pagado
+           `el total requerido (Q${opcionSeleccionada.totalAPagar.toFixed(2)})`
 
-&nbsp;     if (Math.abs(datosPago.monto - opcionSeleccionada.totalAPagar) > 0.01) {
+         );
 
-&nbsp;       throw new Error(
+       }
 
-&nbsp;         `El monto pagado (Q${datosPago.monto}) no coincide con ` +
+       
 
-&nbsp;         `el total requerido (Q${opcionSeleccionada.totalAPagar.toFixed(2)})`
+       // Marcar facturas como pagadas
 
-&nbsp;       );
+       const facturasPagadas = await this.aplicarPagosFacturas(
 
-&nbsp;     }
+         clienteId,
 
-&nbsp;     
+         opcionSeleccionada,
 
-&nbsp;     // Marcar facturas como pagadas
+         datosPago,
 
-&nbsp;     const facturasPagadas = await this.aplicarPagosFacturas(
+         session
 
-&nbsp;       clienteId,
+       );
 
-&nbsp;       opcionSeleccionada,
+       
 
-&nbsp;       datosPago,
+       // Actualizar estado del cliente
 
-&nbsp;       session
+       await Cliente.findByIdAndUpdate(
 
-&nbsp;     );
+         clienteId,
 
-&nbsp;     
+         { 
 
-&nbsp;     // Actualizar estado del cliente
+           estadoServicio: 'activo',
 
-&nbsp;     await Cliente.findByIdAndUpdate(
+           fechaUltimaReconexion: new Date(),
 
-&nbsp;       clienteId,
+           $inc: { numeroReconexiones: 1 }
 
-&nbsp;       { 
+         },
 
-&nbsp;         estadoServicio: 'activo',
+         { session }
 
-&nbsp;         fechaUltimaReconexion: new Date(),
+       );
 
-&nbsp;         $inc: { numeroReconexiones: 1 }
+       
 
-&nbsp;       },
+       // Crear registro de reconexión
 
-&nbsp;       { session }
+       const reconexion = await Reconexion.create(\[{
 
-&nbsp;     );
+         clienteId,
 
-&nbsp;     
+         tipoOpcion: opcion,
 
-&nbsp;     // Crear registro de reconexión
+         montoTotal: datosPago.monto,
 
-&nbsp;     const reconexion = await Reconexion.create(\[{
+         montoDeuda: opcionSeleccionada.montoDeuda,
 
-&nbsp;       clienteId,
+         costoReconexion: opcionSeleccionada.costoReconexion,
 
-&nbsp;       tipoOpcion: opcion,
+         saldoPendiente: opcionSeleccionada.saldoPendiente,
 
-&nbsp;       montoTotal: datosPago.monto,
+         facturasPagadas: facturasPagadas.map(f => f.\_id),
 
-&nbsp;       montoDeuda: opcionSeleccionada.montoDeuda,
+         metodoPago: datosPago.metodoPago,
 
-&nbsp;       costoReconexion: opcionSeleccionada.costoReconexion,
+         referencia: datosPago.referencia,
 
-&nbsp;       saldoPendiente: opcionSeleccionada.saldoPendiente,
+         procesadoPor: datosPago.usuarioId,
 
-&nbsp;       facturasPagadas: facturasPagadas.map(f => f.\_id),
+         fechaReconexion: new Date()
 
-&nbsp;       metodoPago: datosPago.metodoPago,
+       }], { session });
 
-&nbsp;       referencia: datosPago.referencia,
+       
 
-&nbsp;       procesadoPor: datosPago.usuarioId,
+       await session.commitTransaction();
 
-&nbsp;       fechaReconexion: new Date()
+       
 
-&nbsp;     }], { session });
+       return {
 
-&nbsp;     
+         exitoso: true,
 
-&nbsp;     await session.commitTransaction();
+         mensaje: 'Reconexión procesada exitosamente',
 
-&nbsp;     
+         reconexionId: reconexion\[0].\_id,
 
-&nbsp;     return {
+         facturasPagadas: facturasPagadas.length,
 
-&nbsp;       exitoso: true,
+         saldoPendiente: opcionSeleccionada.saldoPendiente,
 
-&nbsp;       mensaje: 'Reconexión procesada exitosamente',
+         fechaReconexion: new Date()
 
-&nbsp;       reconexionId: reconexion\[0].\_id,
+       };
 
-&nbsp;       facturasPagadas: facturasPagadas.length,
+       
 
-&nbsp;       saldoPendiente: opcionSeleccionada.saldoPendiente,
+     } catch (error) {
 
-&nbsp;       fechaReconexion: new Date()
+       await session.abortTransaction();
 
-&nbsp;     };
+       console.error('\[ReconexionService] Error al procesar reconexión:', error);
 
-&nbsp;     
+       throw error;
 
-&nbsp;   } catch (error) {
+     } finally {
 
-&nbsp;     await session.abortTransaction();
+       session.endSession();
 
-&nbsp;     console.error('\[ReconexionService] Error al procesar reconexión:', error);
+     }
 
-&nbsp;     throw error;
+   }
 
-&nbsp;   } finally {
 
-&nbsp;     session.endSession();
+   /**
 
-&nbsp;   }
+    \* Aplica los pagos a las facturas correspondientes
 
-&nbsp; }
+    \*/
 
+   async aplicarPagosFacturas(clienteId, opcionSeleccionada, datosPago, session) {
 
+     const facturasPagadas = \[];
 
-&nbsp; /\*\*
+     const facturasPendientes = await Factura.find({
 
-&nbsp;  \* Aplica los pagos a las facturas correspondientes
+       clienteId,
 
-&nbsp;  \*/
+       estado: 'pendiente'
 
-&nbsp; async aplicarPagosFacturas(clienteId, opcionSeleccionada, datosPago, session) {
+     }).sort({ fechaEmision: 1 }).session(session);
 
-&nbsp;   const facturasPagadas = \[];
+     
 
-&nbsp;   const facturasPendientes = await Factura.find({
+     let montoDisponible = opcionSeleccionada.montoDeuda;
 
-&nbsp;     clienteId,
+     
 
-&nbsp;     estado: 'pendiente'
+     for (const factura of facturasPendientes) {
 
-&nbsp;   }).sort({ fechaEmision: 1 }).session(session);
+       const mora = moraService.calcularMoraFactura(factura);
 
-&nbsp;   
+       const totalFactura = mora.totalConMora;
 
-&nbsp;   let montoDisponible = opcionSeleccionada.montoDeuda;
+       
 
-&nbsp;   
+       if (montoDisponible >= totalFactura) {
 
-&nbsp;   for (const factura of facturasPendientes) {
+         // Pagar factura completa
 
-&nbsp;     const mora = moraService.calcularMoraFactura(factura);
+         factura.estado = 'pagada';
 
-&nbsp;     const totalFactura = mora.totalConMora;
+         factura.fechaPago = new Date();
 
-&nbsp;     
+         factura.metodoPago = datosPago.metodoPago;
 
-&nbsp;     if (montoDisponible >= totalFactura) {
+         factura.montoMora = mora.montoMora;
 
-&nbsp;       // Pagar factura completa
+         await factura.save({ session });
 
-&nbsp;       factura.estado = 'pagada';
+         
 
-&nbsp;       factura.fechaPago = new Date();
+         facturasPagadas.push(factura);
 
-&nbsp;       factura.metodoPago = datosPago.metodoPago;
+         montoDisponible -= totalFactura;
 
-&nbsp;       factura.montoMora = mora.montoMora;
+       } else if (montoDisponible > 0) {
 
-&nbsp;       await factura.save({ session });
+         // Pago parcial
 
-&nbsp;       
+         factura.observaciones = (factura.observaciones || '') + 
 
-&nbsp;       facturasPagadas.push(factura);
+           `\\nPago parcial de Q${montoDisponible.toFixed(2)} el ${new Date().toLocaleDateString()}`;
 
-&nbsp;       montoDisponible -= totalFactura;
+         factura.montoMora = mora.montoMora;
 
-&nbsp;     } else if (montoDisponible > 0) {
+         await factura.save({ session });
 
-&nbsp;       // Pago parcial
+         
 
-&nbsp;       factura.observaciones = (factura.observaciones || '') + 
+         montoDisponible = 0;
 
-&nbsp;         `\\nPago parcial de Q${montoDisponible.toFixed(2)} el ${new Date().toLocaleDateString()}`;
+       }
 
-&nbsp;       factura.montoMora = mora.montoMora;
+       
 
-&nbsp;       await factura.save({ session });
+       if (montoDisponible <= 0) break;
 
-&nbsp;       
+     }
 
-&nbsp;       montoDisponible = 0;
+     
 
-&nbsp;     }
+     return facturasPagadas;
 
-&nbsp;     
-
-&nbsp;     if (montoDisponible <= 0) break;
-
-&nbsp;   }
-
-&nbsp;   
-
-&nbsp;   return facturasPagadas;
-
-&nbsp; }
+   }
 
 }
-
 
 
 module.exports = new ReconexionService();
 
-```
+```text
 
 
+### ✅ Validation
 
-\### ✅ Validation:
+- File `backend/services/reconexion.service.js` exists
 
-\- File `backend/services/reconexion.service.js` exists
+- Correctly imports `mora.service.js`
 
-\- Correctly imports `mora.service.js`
-
-\- Has methods: calcularOpcionesReconexion, procesarReconexion, etc.
-
+- Has methods: calcularOpcionesReconexion, procesarReconexion, etc.
 
 
 ---
 
 
-
-\## 🎯 PHASE 6: CREATE FEL SERVICE (BASE STRUCTURE)
-
+## 🎯 PHASE 6: CREATE FEL SERVICE (BASE STRUCTURE)
 
 
-\### Objective:
+### Objective
 
 Create FEL base structure without implementing the real connection.
 
 
+### Instruction for Claude Code
 
-\### Instruction for Claude Code:
-
-```
+```text
 
 "Create backend/services/fel.service.js as base structure only, without implementing real connection with Infile:"
 
-```
+```text
 
 
-
-\### Complete code:
+### Complete code
 
 ```javascript
 
-/\*\*
+/**
 
-&nbsp;\* Servicio de Factura Electrónica en Línea (FEL)
+  \* Servicio de Factura Electrónica en Línea (FEL)
 
-&nbsp;\* Integración con SAT Guatemala a través de Infile
+  \* Integración con SAT Guatemala a través de Infile
 
-&nbsp;\* 
+  \* 
 
-&nbsp;\* ESTADO: ESTRUCTURA BASE - PENDIENTE DE IMPLEMENTACIÓN
+  \* ESTADO: ESTRUCTURA BASE - PENDIENTE DE IMPLEMENTACIÓN
 
-&nbsp;\* 
+  \* 
 
-&nbsp;\* Para implementar:
+  \* Para implementar:
 
-&nbsp;\* 1. Obtener credenciales de Infile (NIT, Usuario, Clave, Token)
+  \* 1. Obtener credenciales de Infile (NIT, Usuario, Clave, Token)
 
-&nbsp;\* 2. Agregar credenciales al archivo .env
+  \* 2. Agregar credenciales al archivo .env
 
-&nbsp;\* 3. Instalar dependencias: npm install xml2js uuid
+  \* 3. Instalar dependencias: npm install xml2js uuid
 
-&nbsp;\* 4. Implementar los métodos marcados como TODO
+  \* 4. Implementar los métodos marcados como TODO
 
-&nbsp;\*/
-
+  \*/
 
 
 class FELService {
 
-&nbsp; constructor() {
+   constructor() {
 
-&nbsp;   // URLs de Infile
+     // URLs de Infile
 
-&nbsp;   this.baseURL = process.env.FEL\_AMBIENTE === 'produccion' 
+     this.baseURL = process.env.FEL\_AMBIENTE === 'produccion' 
 
-&nbsp;     ? 'https://fel.infile.com.gt/api' 
+       ? 'https://fel.infile.com.gt/api' 
 
-&nbsp;     : 'https://fel-sandbox.infile.com.gt/api';
+       : 'https://fel-sandbox.infile.com.gt/api';
 
-&nbsp;   
+     
 
-&nbsp;   // Credenciales (configurar en .env)
+     // Credenciales (configurar en .env)
 
-&nbsp;   this.credentials = {
+     this.credentials = {
 
-&nbsp;     nit: process.env.FEL\_NIT || null,
+       nit: process.env.FEL\_NIT || null,
 
-&nbsp;     usuario: process.env.FEL\_USUARIO || null,
+       usuario: process.env.FEL\_USUARIO || null,
 
-&nbsp;     clave: process.env.FEL\_CLAVE || null,
+       clave: process.env.FEL\_CLAVE || null,
 
-&nbsp;     token: process.env.FEL\_TOKEN || null
+       token: process.env.FEL\_TOKEN || null
 
-&nbsp;   };
+     };
 
-&nbsp;   
+     
 
-&nbsp;   this.maxReintentos = 3;
+     this.maxReintentos = 3;
 
-&nbsp;   this.tiempoEsperaBase = 2000;
+     this.tiempoEsperaBase = 2000;
 
-&nbsp; }
-
-
-
-&nbsp; /\*\*
-
-&nbsp;  \* TODO: Implementar certificación de factura
-
-&nbsp;  \* Certifica una factura en el sistema FEL
-
-&nbsp;  \*/
-
-&nbsp; async certificarFactura(facturaData) {
-
-&nbsp;   throw new Error('FEL no implementado. Pendiente de configuración con Infile.');
-
-&nbsp; }
+   }
 
 
+   /**
 
-&nbsp; /\*\*
+    \* TODO: Implementar certificación de factura
 
-&nbsp;  \* TODO: Implementar construcción de XML
+    \* Certifica una factura en el sistema FEL
 
-&nbsp;  \* Construye el XML de la factura según formato FEL
+    \*/
 
-&nbsp;  \*/
+   async certificarFactura(facturaData) {
 
-&nbsp; construirXMLFactura(factura, uuid) {
+     throw new Error('FEL no implementado. Pendiente de configuración con Infile.');
 
-&nbsp;   throw new Error('FEL no implementado. Pendiente de configuración con Infile.');
-
-&nbsp; }
-
+   }
 
 
-&nbsp; /\*\*
+   /**
 
-&nbsp;  \* TODO: Implementar anulación
+    \* TODO: Implementar construcción de XML
 
-&nbsp;  \* Anula una factura certificada
+    \* Construye el XML de la factura según formato FEL
 
-&nbsp;  \*/
+    \*/
 
-&nbsp; async anularFactura(uuid, motivo) {
+   construirXMLFactura(factura, uuid) {
 
-&nbsp;   throw new Error('FEL no implementado. Pendiente de configuración con Infile.');
+     throw new Error('FEL no implementado. Pendiente de configuración con Infile.');
 
-&nbsp; }
+   }
 
 
+   /**
 
-&nbsp; /\*\*
+    \* TODO: Implementar anulación
 
-&nbsp;  \* Verifica si FEL está configurado
+    \* Anula una factura certificada
 
-&nbsp;  \*/
+    \*/
 
-&nbsp; estaConfigurado() {
+   async anularFactura(uuid, motivo) {
 
-&nbsp;   return !!(
+     throw new Error('FEL no implementado. Pendiente de configuración con Infile.');
 
-&nbsp;     this.credentials.nit \&\&
+   }
 
-&nbsp;     this.credentials.usuario \&\&
 
-&nbsp;     this.credentials.clave \&\&
+   /**
 
-&nbsp;     this.credentials.token
+    \* Verifica si FEL está configurado
 
-&nbsp;   );
+    \*/
 
-&nbsp; }
+   estaConfigurado() {
+
+     return !!(
+
+       this.credentials.nit \&\&
+
+       this.credentials.usuario \&\&
+
+       this.credentials.clave \&\&
+
+       this.credentials.token
+
+     );
+
+   }
 
 }
 
 
-
 module.exports = new FELService();
 
-```
+```text
 
 
+### ✅ Validation
 
-\### ✅ Validation:
+- File `backend/services/fel.service.js` exists
 
-\- File `backend/services/fel.service.js` exists
+- Methods throw Error indicating "pending"
 
-\- Methods throw Error indicating "pending"
-
-\- Has `estaConfigurado()` method
-
+- Has `estaConfigurado()` method
 
 
 ---
 
 
-
-\## 🎯 PHASE 7: CREATE CONTROLLERS
-
+## 🎯 PHASE 7: CREATE CONTROLLERS
 
 
-\### Objective:
+### Objective
 
 Create the 3 controllers for mora, reconexion, and FEL.
 
 
+### Instruction for Claude Code
 
-\### Instruction for Claude Code:
-
-```
+```text
 
 "Create these three new controllers:"
 
-```
+```text
 
 
-
-\### File 1: `backend/controllers/mora.controller.js`
+### File 1 `backend/controllers/mora.controller.js`
 
 ```javascript
 
 const moraService = require('../services/mora.service');
 
 
+/**
 
-/\*\*
+  \* Obtiene la mora acumulada de un cliente
 
-&nbsp;\* Obtiene la mora acumulada de un cliente
-
-&nbsp;\*/
+  \*/
 
 exports.obtenerMoraCliente = async (req, res) => {
 
-&nbsp; try {
+   try {
 
-&nbsp;   const { clienteId } = req.params;
+     const { clienteId } = req.params;
 
-&nbsp;   
+     
 
-&nbsp;   const mora = await moraService.calcularMoraAcumuladaCliente(clienteId);
+     const mora = await moraService.calcularMoraAcumuladaCliente(clienteId);
 
-&nbsp;   
+     
 
-&nbsp;   res.json({
+     res.json({
 
-&nbsp;     success: true,
+       success: true,
 
-&nbsp;     data: mora
+       data: mora
 
-&nbsp;   });
+     });
 
-&nbsp;   
+     
 
-&nbsp; } catch (error) {
+   } catch (error) {
 
-&nbsp;   console.error('\[MoraController] Error:', error);
+     console.error('\[MoraController] Error:', error);
 
-&nbsp;   res.status(500).json({
+     res.status(500).json({
 
-&nbsp;     success: false,
+       success: false,
 
-&nbsp;     message: 'Error al calcular mora',
+       message: 'Error al calcular mora',
 
-&nbsp;     error: error.message
+       error: error.message
 
-&nbsp;   });
+     });
 
-&nbsp; }
+   }
 
 };
 
 
+/**
 
-/\*\*
+  \* Verifica si un cliente requiere corte de servicio
 
-&nbsp;\* Verifica si un cliente requiere corte de servicio
-
-&nbsp;\*/
+  \*/
 
 exports.verificarCorteServicio = async (req, res) => {
 
-&nbsp; try {
+   try {
 
-&nbsp;   const { clienteId } = req.params;
+     const { clienteId } = req.params;
 
-&nbsp;   
+     
 
-&nbsp;   const resultado = await moraService.requiereCorteServicio(clienteId);
+     const resultado = await moraService.requiereCorteServicio(clienteId);
 
-&nbsp;   
+     
 
-&nbsp;   res.json({
+     res.json({
 
-&nbsp;     success: true,
+       success: true,
 
-&nbsp;     data: resultado
+       data: resultado
 
-&nbsp;   });
+     });
 
-&nbsp;   
+     
 
-&nbsp; } catch (error) {
+   } catch (error) {
 
-&nbsp;   console.error('\[MoraController] Error:', error);
+     console.error('\[MoraController] Error:', error);
 
-&nbsp;   res.status(500).json({
+     res.status(500).json({
 
-&nbsp;     success: false,
+       success: false,
 
-&nbsp;     message: 'Error al verificar corte',
+       message: 'Error al verificar corte',
 
-&nbsp;     error: error.message
+       error: error.message
 
-&nbsp;   });
+     });
 
-&nbsp; }
+   }
 
 };
 
-```
+```text
 
 
-
-\### File 2: `backend/controllers/reconexion.controller.js`
+### File 2 `backend/controllers/reconexion.controller.js`
 
 ```javascript
 
 const reconexionService = require('../services/reconexion.service');
 
 
+/**
 
-/\*\*
+  \* Obtiene las opciones de reconexión para un cliente
 
-&nbsp;\* Obtiene las opciones de reconexión para un cliente
-
-&nbsp;\*/
+  \*/
 
 exports.obtenerOpcionesReconexion = async (req, res) => {
 
-&nbsp; try {
+   try {
 
-&nbsp;   const { clienteId } = req.params;
+     const { clienteId } = req.params;
 
-&nbsp;   
+     
 
-&nbsp;   const opciones = await reconexionService.calcularOpcionesReconexion(clienteId);
+     const opciones = await reconexionService.calcularOpcionesReconexion(clienteId);
 
-&nbsp;   
+     
 
-&nbsp;   res.json({
+     res.json({
 
-&nbsp;     success: true,
+       success: true,
 
-&nbsp;     data: opciones
+       data: opciones
 
-&nbsp;   });
+     });
 
-&nbsp;   
+     
 
-&nbsp; } catch (error) {
+   } catch (error) {
 
-&nbsp;   console.error('\[ReconexionController] Error:', error);
+     console.error('\[ReconexionController] Error:', error);
 
-&nbsp;   res.status(500).json({
+     res.status(500).json({
 
-&nbsp;     success: false,
+       success: false,
 
-&nbsp;     message: 'Error al calcular opciones de reconexión',
+       message: 'Error al calcular opciones de reconexión',
 
-&nbsp;     error: error.message
+       error: error.message
 
-&nbsp;   });
+     });
 
-&nbsp; }
+   }
 
 };
 
 
+/**
 
-/\*\*
+  \* Procesa una reconexión
 
-&nbsp;\* Procesa una reconexión
-
-&nbsp;\*/
+  \*/
 
 exports.procesarReconexion = async (req, res) => {
 
-&nbsp; try {
+   try {
 
-&nbsp;   const { clienteId } = req.params;
+     const { clienteId } = req.params;
 
-&nbsp;   const { opcion, metodoPago, monto, referencia } = req.body;
+     const { opcion, metodoPago, monto, referencia } = req.body;
 
-&nbsp;   
+     
 
-&nbsp;   // Validar datos requeridos
+     // Validar datos requeridos
 
-&nbsp;   if (!opcion || !metodoPago || !monto) {
+     if (!opcion || !metodoPago || !monto) {
 
-&nbsp;     return res.status(400).json({
+       return res.status(400).json({
 
-&nbsp;       success: false,
+         success: false,
 
-&nbsp;       message: 'Faltan datos requeridos: opcion, metodoPago, monto'
+         message: 'Faltan datos requeridos: opcion, metodoPago, monto'
 
-&nbsp;     });
+       });
 
-&nbsp;   }
+     }
 
-&nbsp;   
+     
 
-&nbsp;   if (!\['parcial', 'total'].includes(opcion)) {
+     if (!\['parcial', 'total'].includes(opcion)) {
 
-&nbsp;     return res.status(400).json({
+       return res.status(400).json({
 
-&nbsp;       success: false,
+         success: false,
 
-&nbsp;       message: 'Opción inválida. Debe ser "parcial" o "total"'
+         message: 'Opción inválida. Debe ser "parcial" o "total"'
 
-&nbsp;     });
+       });
 
-&nbsp;   }
+     }
 
-&nbsp;   
+     
 
-&nbsp;   const datosPago = {
+     const datosPago = {
 
-&nbsp;     monto: parseFloat(monto),
+       monto: parseFloat(monto),
 
-&nbsp;     metodoPago,
+       metodoPago,
 
-&nbsp;     referencia: referencia || null,
+       referencia: referencia || null,
 
-&nbsp;     usuarioId: req.user.id // Del middleware de autenticación
+       usuarioId: req.user.id // Del middleware de autenticación
 
-&nbsp;   };
+     };
 
-&nbsp;   
+     
 
-&nbsp;   const resultado = await reconexionService.procesarReconexion(
+     const resultado = await reconexionService.procesarReconexion(
 
-&nbsp;     clienteId,
+       clienteId,
 
-&nbsp;     opcion,
+       opcion,
 
-&nbsp;     datosPago
+       datosPago
 
-&nbsp;   );
+     );
 
-&nbsp;   
+     
 
-&nbsp;   res.json({
+     res.json({
 
-&nbsp;     success: true,
+       success: true,
 
-&nbsp;     message: 'Reconexión procesada exitosamente',
+       message: 'Reconexión procesada exitosamente',
 
-&nbsp;     data: resultado
+       data: resultado
 
-&nbsp;   });
+     });
 
-&nbsp;   
+     
 
-&nbsp; } catch (error) {
+   } catch (error) {
 
-&nbsp;   console.error('\[ReconexionController] Error:', error);
+     console.error('\[ReconexionController] Error:', error);
 
-&nbsp;   res.status(500).json({
+     res.status(500).json({
 
-&nbsp;     success: false,
+       success: false,
 
-&nbsp;     message: 'Error al procesar reconexión',
+       message: 'Error al procesar reconexión',
 
-&nbsp;     error: error.message
+       error: error.message
 
-&nbsp;   });
+     });
 
-&nbsp; }
+   }
 
 };
 
-```
+```text
 
 
-
-\### File 3: `backend/controllers/fel.controller.js`
+### File 3 `backend/controllers/fel.controller.js`
 
 ```javascript
 
 const felService = require('../services/fel.service');
 
 
+/**
 
-/\*\*
+  \* Verifica el estado de configuración de FEL
 
-&nbsp;\* Verifica el estado de configuración de FEL
-
-&nbsp;\*/
+  \*/
 
 exports.verificarEstado = async (req, res) => {
 
-&nbsp; try {
+   try {
 
-&nbsp;   const configurado = felService.estaConfigurado();
+     const configurado = felService.estaConfigurado();
 
-&nbsp;   
+     
 
-&nbsp;   res.json({
+     res.json({
 
-&nbsp;     success: true,
+       success: true,
 
-&nbsp;     fel: {
+       fel: {
 
-&nbsp;       configurado,
+         configurado,
 
-&nbsp;       mensaje: configurado 
+         mensaje: configurado 
 
-&nbsp;         ? 'FEL configurado correctamente' 
+           ? 'FEL configurado correctamente' 
 
-&nbsp;         : 'FEL no configurado. Agregue credenciales en .env'
+           : 'FEL no configurado. Agregue credenciales en .env'
 
-&nbsp;     }
+       }
 
-&nbsp;   });
+     });
 
-&nbsp; } catch (error) {
+   } catch (error) {
 
-&nbsp;   res.status(500).json({
+     res.status(500).json({
 
-&nbsp;     success: false,
+       success: false,
 
-&nbsp;     message: 'Error al verificar estado de FEL',
+       message: 'Error al verificar estado de FEL',
 
-&nbsp;     error: error.message
+       error: error.message
 
-&nbsp;   });
+     });
 
-&nbsp; }
+   }
 
 };
 
 
+/**
 
-/\*\*
+  \* Certifica una factura (PENDIENTE DE IMPLEMENTACIÓN)
 
-&nbsp;\* Certifica una factura (PENDIENTE DE IMPLEMENTACIÓN)
-
-&nbsp;\*/
+  \*/
 
 exports.certificarFactura = async (req, res) => {
 
-&nbsp; try {
+   try {
 
-&nbsp;   res.status(501).json({
+     res.status(501).json({
 
-&nbsp;     success: false,
+       success: false,
 
-&nbsp;     message: 'Certificación FEL pendiente de implementación',
+       message: 'Certificación FEL pendiente de implementación',
 
-&nbsp;     instrucciones: \[
+       instrucciones: \[
 
-&nbsp;       '1. Obtener credenciales de Infile',
+         '1. Obtener credenciales de Infile',
 
-&nbsp;       '2. Configurar variables de entorno en .env',
+         '2. Configurar variables de entorno en .env',
 
-&nbsp;       '3. Implementar métodos en fel.service.js'
+         '3. Implementar métodos en fel.service.js'
 
-&nbsp;     ]
+       ]
 
-&nbsp;   });
+     });
 
-&nbsp; } catch (error) {
+   } catch (error) {
 
-&nbsp;   res.status(500).json({
+     res.status(500).json({
 
-&nbsp;     success: false,
+       success: false,
 
-&nbsp;     message: 'Error en certificación FEL',
+       message: 'Error en certificación FEL',
 
-&nbsp;     error: error.message
+       error: error.message
 
-&nbsp;   });
+     });
 
-&nbsp; }
+   }
 
 };
 
-```
+```text
 
 
+### ✅ Validation
 
-\### ✅ Validation:
+- All 3 controllers exist in `backend/controllers/`
 
-\- All 3 controllers exist in `backend/controllers/`
+- Each one imports its corresponding service
 
-\- Each one imports its corresponding service
-
-\- Have error handling with try-catch
-
+- Have error handling with try-catch
 
 
 ---
 
 
-
-\## 🎯 PHASE 8: CREATE ROUTES
-
+## 🎯 PHASE 8: CREATE ROUTES
 
 
-\### Objective:
+### Objective
 
 Create routes for the 3 modules.
 
 
+### Instruction for Claude Code
 
-\### Instruction for Claude Code:
-
-```
+```text
 
 "Create these three new routes:"
 
-```
+```text
 
 
-
-\### File 1: `backend/routes/mora.routes.js`
+### File 1 `backend/routes/mora.routes.js`
 
 ```javascript
 
@@ -2109,42 +2016,37 @@ const moraController = require('../controllers/mora.controller');
 const { authMiddleware } = require('../middlewares/auth.middleware');
 
 
-
 router.use(authMiddleware);
 
 
+/**
 
-/\*\*
+  \* @route GET /api/mora/cliente/:clienteId
 
-&nbsp;\* @route GET /api/mora/cliente/:clienteId
+  \* @desc Obtener mora acumulada de un cliente
 
-&nbsp;\* @desc Obtener mora acumulada de un cliente
-
-&nbsp;\*/
+  \*/
 
 router.get('/cliente/:clienteId', moraController.obtenerMoraCliente);
 
 
+/**
 
-/\*\*
+  \* @route GET /api/mora/cliente/:clienteId/verificar-corte
 
-&nbsp;\* @route GET /api/mora/cliente/:clienteId/verificar-corte
+  \* @desc Verificar si el cliente requiere corte de servicio
 
-&nbsp;\* @desc Verificar si el cliente requiere corte de servicio
-
-&nbsp;\*/
+  \*/
 
 router.get('/cliente/:clienteId/verificar-corte', moraController.verificarCorteServicio);
 
 
-
 module.exports = router;
 
-```
+```text
 
 
-
-\### File 2: `backend/routes/reconexion.routes.js`
+### File 2 `backend/routes/reconexion.routes.js`
 
 ```javascript
 
@@ -2157,42 +2059,37 @@ const reconexionController = require('../controllers/reconexion.controller');
 const { authMiddleware } = require('../middlewares/auth.middleware');
 
 
-
 router.use(authMiddleware);
 
 
+/**
 
-/\*\*
+  \* @route GET /api/reconexion/opciones/:clienteId
 
-&nbsp;\* @route GET /api/reconexion/opciones/:clienteId
+  \* @desc Obtener opciones de reconexión para un cliente
 
-&nbsp;\* @desc Obtener opciones de reconexión para un cliente
-
-&nbsp;\*/
+  \*/
 
 router.get('/opciones/:clienteId', reconexionController.obtenerOpcionesReconexion);
 
 
+/**
 
-/\*\*
+  \* @route POST /api/reconexion/procesar/:clienteId
 
-&nbsp;\* @route POST /api/reconexion/procesar/:clienteId
+  \* @desc Procesar reconexión de un cliente
 
-&nbsp;\* @desc Procesar reconexión de un cliente
-
-&nbsp;\*/
+  \*/
 
 router.post('/procesar/:clienteId', reconexionController.procesarReconexion);
 
 
-
 module.exports = router;
 
-```
+```text
 
 
-
-\### File 3: `backend/routes/fel.routes.js`
+### File 3 `backend/routes/fel.routes.js`
 
 ```javascript
 
@@ -2205,144 +2102,127 @@ const felController = require('../controllers/fel.controller');
 const { authMiddleware } = require('../middlewares/auth.middleware');
 
 
-
 router.use(authMiddleware);
 
 
+/**
 
-/\*\*
+  \* @route GET /api/fel/estado
 
-&nbsp;\* @route GET /api/fel/estado
+  \* @desc Verifica el estado de configuración de FEL
 
-&nbsp;\* @desc Verifica el estado de configuración de FEL
-
-&nbsp;\*/
+  \*/
 
 router.get('/estado', felController.verificarEstado);
 
 
+/**
 
-/\*\*
+  \* @route POST /api/fel/certificar/:facturaId
 
-&nbsp;\* @route POST /api/fel/certificar/:facturaId
+  \* @desc Certifica una factura (PENDIENTE DE IMPLEMENTACIÓN)
 
-&nbsp;\* @desc Certifica una factura (PENDIENTE DE IMPLEMENTACIÓN)
-
-&nbsp;\*/
+  \*/
 
 router.post('/certificar/:facturaId', felController.certificarFactura);
 
 
-
 module.exports = router;
 
-```
+```text
 
 
+### ✅ Validation
 
-\### ✅ Validation:
+- All 3 routes exist in `backend/routes/`
 
-\- All 3 routes exist in `backend/routes/`
+- All use authMiddleware
 
-\- All use authMiddleware
-
-\- Correctly import their controllers
-
+- Correctly import their controllers
 
 
 ---
 
 
-
-\## 🎯 PHASE 9: REGISTER ROUTES IN SERVER.JS
-
+## 🎯 PHASE 9: REGISTER ROUTES IN SERVER.JS
 
 
-\### Objective:
+### Objective
 
 Modify server.js to register the new routes.
 
 
+### Instruction for Claude Code
 
-\### Instruction for Claude Code:
-
-```
+```text
 
 "Open backend/server.js and:
 
-1\. LOCATE where the route imports are (example: const clienteRoutes = require...)
+1. LOCATE where the route imports are (example: const clienteRoutes = require...)
 
-2\. ADD these two lines AFTER the existing imports:
+2. ADD these two lines AFTER the existing imports:
 
-&nbsp;  const moraRoutes = require('./routes/mora.routes');
+    const moraRoutes = require('./routes/mora.routes');
 
-&nbsp;  const reconexionRoutes = require('./routes/reconexion.routes');
+    const reconexionRoutes = require('./routes/reconexion.routes');
 
-3\. LOCATE where routes are registered (example: app.use('/api/clientes'...)
+3. LOCATE where routes are registered (example: app.use('/api/clientes'...)
 
-4\. ADD these two lines AFTER the existing routes:
+4. ADD these two lines AFTER the existing routes:
 
-&nbsp;  app.use('/api/mora', moraRoutes);
+    app.use('/api/mora', moraRoutes);
 
-&nbsp;  app.use('/api/reconexion', reconexionRoutes);
+    app.use('/api/reconexion', reconexionRoutes);
 
-5\. DO NOT modify anything else in the file."
+5. DO NOT modify anything else in the file."
 
-```
+```text
 
 
+### ✅ Validation
 
-\### ✅ Validation:
+- `backend/server.js` has the 2 new imports
 
-\- `backend/server.js` has the 2 new imports
+- `backend/server.js` has the 2 new app.use
 
-\- `backend/server.js` has the 2 new app.use
+- NO file like `server.nuevo.js` or similar exists
 
-\- NO file like `server.nuevo.js` or similar exists
-
-\- The server still starts correctly
-
+- The server still starts correctly
 
 
 ---
 
 
-
-\## 🎯 PHASE 10: UPDATE .ENV WITH FEL VARIABLES
-
+## 🎯 PHASE 10: UPDATE .ENV WITH FEL VARIABLES
 
 
-\### Objective:
+### Objective
 
 Add environment variables for FEL (empty for now).
 
 
+### Instruction for Claude Code
 
-\### Instruction for Claude Code:
-
-```
+```text
 
 "Open the .env file in the project root and ADD these lines at the END of the existing file. KEEP all variables that already exist:"
 
-```
+```text
 
 
-
-\### Code to add:
+### Code to add
 
 ```env
 
 
+# ===== CONFIGURACIÓN FEL (Factura Electrónica) =====
 
-\# ===== CONFIGURACIÓN FEL (Factura Electrónica) =====
-
-\# Ambiente: 'sandbox' para pruebas, 'produccion' para uso real
+# Ambiente: 'sandbox' para pruebas, 'produccion' para uso real
 
 FEL\_AMBIENTE=sandbox
 
 
-
-\# Credenciales de Infile (obtener en https://infile.com.gt)
+# Credenciales de Infile (obtener en https://infile.com.gt)
 
 FEL\_NIT=
 
@@ -2353,160 +2233,139 @@ FEL\_CLAVE=
 FEL\_TOKEN=
 
 
+# NOTA: Dejar vacío hasta obtener credenciales reales de Infile
 
-\# NOTA: Dejar vacío hasta obtener credenciales reales de Infile
-
-```
-
+```text
 
 
-\### ✅ Validation:
+### ✅ Validation
 
-\- `.env` has the 5 new FEL\_\* variables
+- `.env` has the 5 new FEL\_\* variables
 
-\- Variables are empty (no value after the =)
+- Variables are empty (no value after the =)
 
-\- All previous variables remain intact
-
+- All previous variables remain intact
 
 
 ---
 
 
-
-\## 🎉 IMPLEMENTATION COMPLETED
-
+## 🎉 IMPLEMENTATION COMPLETED
 
 
-\### ✅ Summary of what was implemented:
+### ✅ Summary of what was implemented
 
 
+**Files created (13):**
 
-\*\*Files created (13):\*\*
+- ✅ `backend/services/mora.service.js`
 
-\- ✅ `backend/services/mora.service.js`
+- ✅ `backend/services/reconexion.service.js`
 
-\- ✅ `backend/services/reconexion.service.js`
+- ✅ `backend/services/fel.service.js`
 
-\- ✅ `backend/services/fel.service.js`
+- ✅ `backend/models/reconexion.model.js`
 
-\- ✅ `backend/models/reconexion.model.js`
+- ✅ `backend/models/logFel.model.js`
 
-\- ✅ `backend/models/logFel.model.js`
+- ✅ `backend/controllers/mora.controller.js`
 
-\- ✅ `backend/controllers/mora.controller.js`
+- ✅ `backend/controllers/reconexion.controller.js`
 
-\- ✅ `backend/controllers/reconexion.controller.js`
+- ✅ `backend/controllers/fel.controller.js`
 
-\- ✅ `backend/controllers/fel.controller.js`
+- ✅ `backend/routes/mora.routes.js`
 
-\- ✅ `backend/routes/mora.routes.js`
+- ✅ `backend/routes/reconexion.routes.js`
 
-\- ✅ `backend/routes/reconexion.routes.js`
-
-\- ✅ `backend/routes/fel.routes.js`
-
+- ✅ `backend/routes/fel.routes.js`
 
 
-\*\*Files modified (3):\*\*
+**Files modified (3):**
 
-\- ✅ `backend/models/factura.model.js`
+- ✅ `backend/models/factura.model.js`
 
-\- ✅ `backend/models/cliente.model.js`
+- ✅ `backend/models/cliente.model.js`
 
-\- ✅ `backend/server.js`
+- ✅ `backend/server.js`
 
-\- ✅ `.env`
+- ✅ `.env`
 
 
-
-\### 🧪 FINAL TESTS
-
+### 🧪 FINAL TESTS
 
 
 Execute these commands to test:
 
 
-
 ```bash
 
-\# 1. Start the server
+# 1. Start the server
 
 npm start
 
 
-
-\# 2. Test mora endpoint (replace {clienteId} and {token})
+# 2. Test mora endpoint (replace {clienteId} and {token})
 
 curl http://localhost:5000/api/mora/cliente/{clienteId} \\
 
-&nbsp; -H "Authorization: Bearer {token}"
+   -H "Authorization: Bearer {token}"
 
 
-
-\# 3. Test reconnection options
+# 3. Test reconnection options
 
 curl http://localhost:5000/api/reconexion/opciones/{clienteId} \\
 
-&nbsp; -H "Authorization: Bearer {token}"
+   -H "Authorization: Bearer {token}"
 
 
-
-\# 4. Verify FEL status
+# 4. Verify FEL status
 
 curl http://localhost:5000/api/fel/estado \\
 
-&nbsp; -H "Authorization: Bearer {token}"
+   -H "Authorization: Bearer {token}"
 
-```
-
-
-
-\### 📊 Available endpoints:
+```text
 
 
-
-\*\*Mora:\*\*
-
-\- `GET /api/mora/cliente/:clienteId` - Calculate late fees
-
-\- `GET /api/mora/cliente/:clienteId/verificar-corte` - Verify service cut
+### 📊 Available endpoints
 
 
+**Mora:**
 
-\*\*Reconexion:\*\*
+- `GET /api/mora/cliente/:clienteId` - Calculate late fees
 
-\- `GET /api/reconexion/opciones/:clienteId` - View options
-
-\- `POST /api/reconexion/procesar/:clienteId` - Process reconnection
-
+- `GET /api/mora/cliente/:clienteId/verificar-corte` - Verify service cut
 
 
-\*\*FEL:\*\*
+**Reconexion:**
 
-\- `GET /api/fel/estado` - Configuration status
+- `GET /api/reconexion/opciones/:clienteId` - View options
 
-\- `POST /api/fel/certificar/:facturaId` - Certify (pending)
-
-
-
-\### 🎯 Next steps:
+- `POST /api/reconexion/procesar/:clienteId` - Process reconnection
 
 
+**FEL:**
 
-1\. \*\*Functional testing\*\* with Postman or similar
+- `GET /api/fel/estado` - Configuration status
 
-2\. \*\*Create frontend\*\* to consume these endpoints
+- `POST /api/fel/certificar/:facturaId` - Certify (pending)
 
-3\. \*\*Implement FEL\*\* when you have Infile credentials
 
-4\. \*\*Document\*\* use cases and examples
+### 🎯 Next steps
 
+
+1. **Functional testing** with Postman or similar
+
+2. **Create frontend** to consume these endpoints
+
+3. **Implement FEL** when you have Infile credentials
+
+4. **Document** use cases and examples
 
 
 ---
 
 
-
-\*\*Implementation complete! 🚀\*\*
+**Implementation complete! 🚀**
 
