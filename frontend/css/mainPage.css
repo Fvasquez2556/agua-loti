@@ -275,6 +275,14 @@
             background: linear-gradient(135deg, #f093fb, #f5576c);
         }
 
+        .module-card.mora .module-icon {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        }
+
+        .module-card.reconexion .module-icon {
+            background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+        }
+
         .module-title {
             font-size: 1.5rem;
             font-weight: 600;

@@ -98,7 +98,35 @@ const clienteSchema = new mongoose.Schema({
   fechaActualizacion: {
     type: Date,
     default: Date.now
-  }
+  },
+
+  // ===== AGREGAR AL SCHEMA EXISTENTE =====
+
+  // Información de reconexiones
+  numeroReconexiones: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  fechaUltimaReconexion: {
+    type: Date,
+    default: null
+  },
+
+  // Estado de servicio
+  estadoServicio: {
+    type: String,
+    enum: ['activo', 'suspendido', 'cortado'],
+    default: 'activo'
+  },
+
+  // Notas de alerta
+  alertas: [{
+    tipo: { type: String, enum: ['mora', 'corte', 'reconexion'] },
+    mensaje: { type: String },
+    fecha: { type: Date, default: Date.now }
+  }]
 }, {
   timestamps: true, // Agrega createdAt y updatedAt automáticamente
   toJSON: { virtuals: true },

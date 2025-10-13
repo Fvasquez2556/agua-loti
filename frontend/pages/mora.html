@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Mora - Sistema Agua LOTI</title>
+    <link rel="stylesheet" href="../css/mora.css">
+    <link rel="icon" href="../images/favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <button class="back-btn" onclick="window.location.href='mainPage.html'">
+                ← Volver al Menú Principal
+            </button>
+            <h1 class="page-title">⚠️ Control de Mora Acumulada</h1>
+            <button class="logout-btn" onclick="AuthUtils.logout()">
+                Cerrar Sesión 🔐
+            </button>
+        </div>
+
+        <!-- Buscador de Cliente -->
+        <div class="search-section">
+            <h3>Filtrar Clientes con Mora</h3>
+            <div class="search-box">
+                <input
+                    type="text"
+                    id="searchCliente"
+                    placeholder="Escribe nombre, apellido, DPI o número de contador..."
+                    class="search-input">
+            </div>
+            <p class="search-hint">💡 Los resultados se filtran automáticamente 2 segundos después de dejar de escribir</p>
+        </div>
+
+        <!-- Resultado de Búsqueda -->
+        <div id="clienteInfo" class="cliente-info">
+            <h3>Información del Cliente</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>Nombre:</strong>
+                    <span id="clienteNombre"></span>
+                </div>
+                <div class="info-item">
+                    <strong>DPI:</strong>
+                    <span id="clienteDPI"></span>
+                </div>
+                <div class="info-item">
+                    <strong>Contador:</strong>
+                    <span id="clienteContador"></span>
+                </div>
+                <div class="info-item">
+                    <strong>Estado de Servicio:</strong>
+                    <span id="clienteEstado" class="badge"></span>
+                </div>
+            </div>
+            <button class="btn-primary" onclick="moraManager.calcularMora()">
+                📊 Calcular Mora
+            </button>
+        </div>
+
+        <!-- Resultado de Mora -->
+        <div id="moraResult" class="mora-result">
+            <div class="mora-header">
+                <h3>Resumen de Mora</h3>
+                <span id="criticidadBadge" class="criticidad-badge"></span>
+            </div>
+
+            <!-- Resumen -->
+            <div class="mora-summary">
+                <div class="summary-card">
+                    <div class="summary-label">Facturas Pendientes</div>
+                    <div class="summary-value" id="facturasPendientes">0</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Meses Atrasados</div>
+                    <div class="summary-value" id="mesesAtrasados">0</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Monto Original</div>
+                    <div class="summary-value" id="montoOriginal">Q0.00</div>
+                </div>
+                <div class="summary-card highlight">
+                    <div class="summary-label">Mora Acumulada</div>
+                    <div class="summary-value" id="moraTotal">Q0.00</div>
+                </div>
+                <div class="summary-card total">
+                    <div class="summary-label">Total a Pagar</div>
+                    <div class="summary-value" id="totalAPagar">Q0.00</div>
+                </div>
+            </div>
+
+            <!-- Alerta de Reconexión -->
+            <div id="reconexionAlert" class="reconexion-alert">
+                <div class="alert-icon">🔌</div>
+                <div class="alert-content">
+                    <strong>⚠️ Cliente Requiere Reconexión</strong>
+                    <p>Este cliente tiene más de 2 meses de atraso y requiere proceso de reconexión.</p>
+                    <p><strong>Costo de Reconexión: Q<span id="costoReconexion">125.00</span></strong></p>
+                </div>
+                <button class="btn-reconexion" onclick="window.location.href='reconexion.html?clienteId=' + moraManager.currentClienteId">
+                    Ir a Reconexión →
+                </button>
+            </div>
+
+            <!-- Detalle de Facturas -->
+            <div class="facturas-detail">
+                <h4>Detalle de Facturas Vencidas</h4>
+                <div class="table-responsive">
+                    <table class="facturas-table">
+                        <thead>
+                            <tr>
+                                <th>No. Factura</th>
+                                <th>Fecha Emisión</th>
+                                <th>Fecha Vencimiento</th>
+                                <th>Días Vencidos</th>
+                                <th>Meses Completos</th>
+                                <th>Monto Original</th>
+                                <th>% Mora</th>
+                                <th>Mora</th>
+                                <th>Total con Mora</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facturasTableBody">
+                            <!-- Se llenará dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            <div class="actions-section">
+                <button class="btn-secondary" onclick="moraManager.exportarReporte()">
+                    📄 Exportar Reporte
+                </button>
+                <button class="btn-secondary" onclick="moraManager.imprimirEstadoCuenta()">
+                    🖨️ Imprimir Estado de Cuenta
+                </button>
+            </div>
+        </div>
+
+        <!-- Lista de Clientes con Mora -->
+        <div class="clientes-mora-section">
+            <div class="section-header">
+                <h3>Clientes con Mora Crítica</h3>
+                <div class="header-actions">
+                    <span id="clientesCriticosCount" class="clientes-counter">Cargando...</span>
+                    <button class="btn-secondary" id="refreshCriticosBtn" onclick="moraManager.refreshData()">
+                        🔄 Actualizar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros para tabla de clientes críticos -->
+            <div class="filters-section">
+                <div class="filter-group">
+                    <label for="projectFilterCriticos">Filtrar por Proyecto:</label>
+                    <select id="projectFilterCriticos" class="filter-select">
+                        <option value="">Todos los proyectos</option>
+                        <option value="san-miguel">San Miguel</option>
+                        <option value="santa-clara-1">Santa Clara Fase 1</option>
+                        <option value="santa-clara-2">Santa Clara Fase 2</option>
+                        <option value="cabanas-1">Cabañas Fase 1</option>
+                        <option value="cabanas-2">Cabañas Fase 2</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="clientes-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Contador</th>
+                            <th>Meses Atrasados</th>
+                            <th>Deuda Total</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientesCriticosBody">
+                        <!-- Se llenará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Controles de Paginación -->
+            <div id="paginationContainer" class="pagination-container hidden">
+                <div class="pagination-info">
+                    <span id="paginationInfo">Mostrando 1-10 de 100 clientes</span>
+                </div>
+                <div class="pagination-controls">
+                    <button id="firstPageBtn" class="pagination-btn">«</button>
+                    <button id="prevPageBtn" class="pagination-btn">‹</button>
+                    <div id="pageNumbers" class="page-numbers">
+                        <!-- Se generarán dinámicamente -->
+                    </div>
+                    <button id="nextPageBtn" class="pagination-btn">›</button>
+                    <button id="lastPageBtn" class="pagination-btn">»</button>
+                </div>
+                <div class="pagination-size">
+                    <label for="pageSizeSelect">Mostrar:</label>
+                    <select id="pageSizeSelect" class="page-size-select">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span>por página</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Cargando...</p>
+        </div>
+
+        <!-- Message Display -->
+        <div id="message" class="message"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../js/auth.js"></script>
+    <script src="../js/pageProtection.js"></script>
+    <script src="../js/mora.js"></script>
+</body>
+</html>

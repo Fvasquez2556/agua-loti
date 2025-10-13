@@ -181,8 +181,43 @@ const facturaSchema = new mongoose.Schema({
   actualizadoPor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+
+  // ===== AGREGAR ESTOS CAMPOS AL SCHEMA EXISTENTE =====
+
+  // Información de Factura Electrónica (FEL)
+  fel: {
+    certificada: { type: Boolean, default: false },
+    uuid: { type: String, default: null },
+    numeroAutorizacion: { type: String, default: null },
+    serie: { type: String, default: null },
+    numero: { type: String, default: null },
+    fechaCertificacion: { type: Date, default: null },
+    urlVerificacion: { type: String, default: null },
+    intentosFallidos: { type: Number, default: 0 },
+    ultimoError: { type: String, default: null },
+    tipoDocumento: {
+      type: String,
+      enum: ['FACT', 'NCRE', 'NDEB', 'NABN'],
+      default: 'FACT'
+    }
+  },
+
+  // Referencia a documento original (para NCRE y NDEB)
+  documentoReferencia: {
+    tipo: { type: String, enum: ['factura', 'nota'], default: null },
+    uuid: { type: String, default: null },
+    numeroDocumento: { type: String, default: null }
+  },
+
+  // Información de mora detallada
+  detallesMora: {
+    diasVencidos: { type: Number, default: 0 },
+    mesesCompletos: { type: Number, default: 0 },
+    porcentajeMora: { type: Number, default: 0 },
+    calculadoEn: { type: Date, default: null }
   }
-  
+
 }, {
   timestamps: true, // createdAt, updatedAt automáticos
   
