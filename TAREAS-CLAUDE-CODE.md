@@ -1,8 +1,6 @@
 # 🚀 TASKS FOR CLAUDE CODE - Sistema Agua LOTI
 
-
 ## 📖 HOW TO USE THIS FILE
-
 
 ### Preparation
 
@@ -13,7 +11,6 @@
 3. Execute: `claude-code`
 
 4. Follow the instructions phase by phase
-
 
 ### Workflow
 

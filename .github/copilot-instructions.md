@@ -7,52 +7,88 @@ Sistema de gestión integral para el servicio de agua potable en Huehuetenango, 
 ## 🏗️ Arquitectura Clave
 
 ### Backend (Node.js + Express + MongoDB)
-- **Patrón MVC**: `models/` → `controllers/` → `routes/`
-- **Autenticación**: JWT con middleware `auth.middleware.js` en TODAS las rutas protegidas
-- **Base de datos**: MongoDB con Mongoose ODM, sin schema database.js (conexión directa en server.js)
-- **Servidor único**: `backend/server.js` sirve API REST (`/api/*`) y archivos estáticos del frontend
+- **Patrón MVC**: `models/` → `controllers/` → `routes/` → registradas en `server.js`
+- **Autenticación**: JWT con `auth.middleware.js` aplicado a TODAS las rutas protegidas mediante `router.use(authMiddleware)`
+- **Base de datos**: MongoDB con Mongoose ODM (conexión directa en `server.js`, NO hay `database.js`)
+- **Servidor único**: `backend/server.js` sirve API REST (`/api/*`) + archivos estáticos del frontend en el mismo puerto 5000
 
-### Frontend (JavaScript Vanilla)
-- **Sin frameworks**: HTML5 + CSS3 + JavaScript ES6+ puro
-- **Utilidades compartidas**: `auth.js` y `main.js` contienen `AuthUtils` y `PageUtils` usados en TODOS los módulos
-- **Patrón de página**: Cada módulo tiene su HTML, CSS y JS dedicado (ej: `factura.html`, `factura.css`, `factura.js`)
-- **Comunicación API**: Todas las peticiones DEBEN usar `AuthUtils.authenticatedFetch()` para incluir el token JWT
+### Frontend (JavaScript Vanilla - Sin Frameworks)
+- **Sin frameworks**: HTML5 + CSS3 + JavaScript ES6+ puro (NO React/Vue/Angular)
+- **Utilidades globales**:
+  - `auth.js` → `AuthManager` (singleton `auth`) + `AuthUtils` para login/logout/fetch autenticado
+  - `main.js` → `PageUtils` para mensajes de éxito/error y utilidades UI
+- **Patrón de página**: Cada módulo = 1 HTML + 1 CSS + 1 JS (ej: `factura.html`, `factura.css`, `factura.js`)
+- **Comunicación API**: SIEMPRE usar `AuthUtils.authenticatedFetch(url, options)` para incluir `Authorization: Bearer ${token}`
+- **Almacenamiento**: Token JWT en `sessionStorage` (NO `localStorage`) → se borra al cerrar navegador/pestaña
 
 ## 💰 Reglas de Negocio CRÍTICAS
 
 ### Sistema de Facturación (NO MODIFICAR sin consultar)
 ```javascript
-// Constantes definidas en frontend/js/factura.js y backend/models/factura.model.js
+// Constantes DUPLICADAS en frontend/js/factura.js Y backend/models/factura.model.js
 TARIFA_BASE = 50.00          // Q50.00 por 30,000 litros
 LIMITE_BASE = 30000          // 30,000 litros incluidos
-PRECIO_POR_LITRO = 0.00167   // Para excedentes
-RECARGO_EXCEDENTE = 0.075    // 7.5% adicional en excedentes
-MORA_MENSUAL = 0.07          // 7% mensual sobre monto original
-COSTO_RECONEXION = 125.00    // Q125.00 fijo
+PRECIO_POR_LITRO = 0.00167   // Para excedentes (Q50.00 / 30,000)
+RECARGO_EXCEDENTE = 0.075    // 7.5% adicional sobre excedentes
+MORA_MENSUAL = 0.07          // 7% mensual sobre monto original (ver mora.service.js)
+COSTO_RECONEXION = 125.00    // Q125.00 fijo (ver reconexion.service.js)
 ```
 
 ### Fórmulas de Cálculo (Ver `factura.model.js` método `calcularMontos()`)
 1. **Consumo básico (≤30,000L)**: Q50.00 fijo
 2. **Consumo excedente**: `(excedente * PRECIO_POR_LITRO) * (1 + RECARGO_EXCEDENTE)`
-3. **Redondeo especial**: Siempre a múltiplo de Q0.50 usando `Math.round(monto * 2) / 2`
-4. **Mora**: Se calcula por mes completo, no días proporcionales (ver `mora.service.js`)
+3. **Redondeo especial**: SIEMPRE a múltiplo de Q0.50 usando `Math.round(monto * 2) / 2`
+4. **Mora acumulada**: Calculada por mes completo (NO días proporcionales) en `mora.service.js`
+
+### Sistema de Mora y Reconexión
+- **Mora**: `MoraService` calcula mora acumulada sobre facturas pendientes (método `calcularMoraAcumuladaCliente()`)
+- **Reconexión**: `ReconexionService` ofrece 3 opciones:
+  - **Parcial (80%)**: Pago del 80% de deuda + Q125 reconexión → deja saldo pendiente
+  - **Total (100%)**: Pago completo de deuda + Q125 reconexión → sin saldo
+  - **Emergencia**: Reconexión inmediata con justificación y autorización (campo `esEmergencia: true`)
+- **Regla crítica**: Cliente con ≥2 meses de mora requiere reconexión (ver `mora.service.js`)
 
 ## 🔐 Autenticación y Seguridad
 
 ### Flujo de Autenticación
 1. **Login**: `POST /api/auth/login` → Retorna `{ token, user }`
-2. **Almacenamiento**: Token guardado en `localStorage` como `authToken`
-3. **Headers**: Todas las peticiones API llevan `Authorization: Bearer ${token}`
-4. **Protección páginas**: `pageProtection.js` verifica token en `DOMContentLoaded`
+2. **Almacenamiento**: Token en `sessionStorage.setItem('auth_token', token)` - NO `localStorage`
+3. **Headers**: `Authorization: Bearer ${token}` en TODAS las peticiones API
+4. **Protección páginas**: `auth.requireAuth()` verifica token en `DOMContentLoaded`
+5. **Expiración**: Token se valida decodificando JWT payload (`exp` field), logout automático si expirado
+6. **Sesión temporal**: `sessionStorage` asegura que sesión se cierra al cerrar navegador/pestaña
+
+### AuthUtils - API de Autenticación Frontend
+```javascript
+// Singleton global disponible en todas las páginas
+auth = new AuthManager();  // Gestiona sessionStorage
+
+// Métodos principales (definidos en auth.js):
+AuthUtils.login(username, password)           // Login con auto-save de token
+AuthUtils.logout()                             // Limpia sessionStorage + redirige
+AuthUtils.authenticatedFetch(url, options)    // Fetch con token automático, maneja 401
+AuthUtils.getAuthHeaders()                     // Retorna headers con Bearer token
+```
 
 ### Middleware Backend
 ```javascript
-// Todas las rutas protegidas usan:
+// Aplicar a TODAS las rutas protegidas:
 const authMiddleware = require('./middlewares/auth.middleware');
-router.use(authMiddleware); // Antes de las rutas
+router.use(authMiddleware); // ANTES de definir rutas
+// Middleware valida token y añade req.user con datos del usuario
 ```
 
 ## 📁 Estructura de Datos
+
+### Modelos Principales (Ver `backend/models/`)
+- **Cliente**: `nombres`, `apellidos`, `dpi` (13 dígitos guatemalteco), `contador`, `lote`, `proyecto`, `estado`, `creadoPor`
+- **Factura**: `numeroFactura`, `clienteId`, lecturas, consumo, tarifas, `estado` (pendiente/pagada/vencida/anulada), `metodoPago`
+- **Pago**: `numeroPago`, `facturaId`, `clienteId`, `montoOriginal`, `montoMora`, `montoReconexion`, `montoPagado`, `metodoPago`
+- **Reconexion**: `clienteId`, `tipoOpcion` (parcial/total/emergencia), montos, `facturasPagadas[]`, `esEmergencia`, `autorizadoPor`
+- **Lectura**: Lecturas de contadores con detección de anomalías
+- **User**: Usuarios del sistema con autenticación JWT
+- **Contador**: Contadores automáticos para generación de números de factura/pago
+- **LogFEL**: Log de intentos de certificación FEL (pendiente implementación)
 
 ### Modelo Cliente (`cliente.model.js`)
 ```javascript
@@ -82,6 +118,11 @@ router.use(authMiddleware); // Antes de las rutas
 }
 ```
 
+### Servicios de Negocio (`backend/services/`)
+- **`mora.service.js`**: Singleton que calcula mora acumulada por cliente, retorna objeto con `tieneDeuda`, `mesesAtrasados`, `moraTotal`, `detalleFacturas[]`
+- **`reconexion.service.js`**: Maneja lógica de reconexión con opciones 80%/100%/emergencia, calcula qué facturas pagar
+- **`fel.service.js`**: Estructura base para integración FEL (NO IMPLEMENTADO - requiere credenciales Infile/SAT)
+
 ## 🔧 Comandos de Desarrollo
 
 ```bash
@@ -101,6 +142,20 @@ npm run init-facturacion-test
 ### Acceso a la Aplicación
 - **Frontend**: `http://localhost:5000/pages/login.html` (servido por Express)
 - **API REST**: `http://localhost:5000/api/*`
+
+### Variables de Entorno (.env en raíz)
+```bash
+MONGO_URI=mongodb://localhost:27017/agua-loti
+JWT_SECRET=tu_jwt_secret_aqui
+PORT=5000
+NODE_ENV=development
+# FEL (opcional - NO implementado aún)
+# FEL_AMBIENTE=sandbox|produccion
+# FEL_NIT=
+# FEL_USUARIO=
+# FEL_CLAVE=
+# FEL_TOKEN=
+```
 
 ## 🎨 Convenciones de Código
 
@@ -140,8 +195,9 @@ npm run init-facturacion-test
 
 ### Al Agregar Páginas Frontend
 - ✅ Incluir `<script src="../js/main.js">` y `<script src="../js/auth.js">` ANTES del script específico
-- ✅ Agregar protección de página: `checkAuth()` al inicio del JavaScript
+- ✅ Agregar protección de página: `auth.requireAuth()` al inicio del JavaScript
 - ✅ Importar estilos base: `<link rel="stylesheet" href="../css/styles.css">`
+- ✅ Verificar orden de carga: auth.js debe cargar PRIMERO para que `AuthManager` y `AuthUtils` estén disponibles
 
 ## 🔍 Debugging
 
@@ -150,8 +206,12 @@ npm run init-facturacion-test
 - Requests logueados automáticamente en modo desarrollo
 
 ### Testing autenticación
-- Página de pruebas: `frontend/pages/auth-test.html`
-- Inspeccionar token: `localStorage.getItem('authToken')`
+- Verificar token: `sessionStorage.getItem('auth_token')`
+- Inspeccionar usuario: `sessionStorage.getItem('user_data')`
+
+### Herramientas de Desarrollo
+- **checkCounters.js**: Verificar estado de contadores de facturación
+- **syncCounters.js**: Sincronizar contadores si hay desajustes
 
 ## 📊 Scripts de Utilidad
 
