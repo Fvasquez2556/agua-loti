@@ -103,4 +103,12 @@ router.put('/:id/cancelar', pagoController.cancelarPago);
  */
 router.post('/:id/regenerar-dte', pagoController.regenerarDTE);
 
+/**
+ * @route GET /api/pagos/:id/ticket
+ * @desc Generar y descargar ticket de pago en PDF
+ * @param {string} id - ID del pago
+ * @access Private
+ */
+router.get('/:id/ticket', pagoController.generarTicketPago);
+
 module.exports = router;

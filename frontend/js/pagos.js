@@ -281,7 +281,7 @@ function populatePendingInvoicesTable() {
             <tr class="factura-row" data-factura-id="${factura._id}">
                 <td>
                     <div class="cliente-info">
-                        <strong>${cliente?.nombre || 'N/A'}</strong>
+                        <strong>${cliente?.nombres || 'N/A'}</strong>
                         <br>
                         <small class="text-muted">${cliente?.proyecto || 'Sin proyecto'}</small>
                     </div>
@@ -359,7 +359,7 @@ function populatePaymentsTable() {
         const factura = pago.facturaId;
         const felStatus = pago.fel?.generado ? 'Generado' : 'Pendiente';
         const felClass = pago.fel?.generado ? 'success' : 'warning';
-        
+
         return `
             <tr>
                 <td>${formatDate(pago.fechaPago)}</td>
@@ -370,8 +370,11 @@ function populatePaymentsTable() {
                 <td>${pago.referenciaPago || '-'}</td>
                 <td><span class="status-badge ${felClass}">${felStatus}</span></td>
                 <td>
-                    <button class="btn-sm btn-secondary" onclick="viewPaymentDetails('${pago._id}')">
+                    <button class="btn-sm btn-secondary" onclick="viewPaymentDetails('${pago._id}')" title="Ver detalles">
                         👁️ Ver
+                    </button>
+                    <button class="btn-sm btn-primary" onclick="descargarTicketPago('${pago._id}')" title="Descargar ticket PDF">
+                        📄 Ticket
                     </button>
                 </td>
             </tr>
@@ -387,6 +390,7 @@ window.confirmPaymentRegistration = confirmPaymentRegistration;
 window.onClienteChange = onClienteChange;
 window.onFacturaChange = onFacturaChange;
 window.onMetodoPagoChange = onMetodoPagoChange;
+window.descargarTicketPago = descargarTicketPago;
 
 // Inicializar la aplicación cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', initializeApp);
@@ -682,14 +686,26 @@ async function onPaymentSubmit(e) {
  * Mostrar modal de confirmación de pago
  */
 function showConfirmPaymentModal(paymentData) {
+    // Guardar SOLO los datos del pago (no sobrescribir con otros datos)
     pendingPaymentData = paymentData;
-    
+
     const modal = document.getElementById('confirmPaymentModal');
     const detailsDiv = document.getElementById('confirmPaymentDetails');
-    
-    const cliente = clientes.find(c => c._id === currentSelectedInvoice.clienteId._id);
+
+    // Obtener el ID del cliente (puede ser un objeto o un string)
+    const clienteId = typeof currentSelectedInvoice.clienteId === 'object'
+        ? currentSelectedInvoice.clienteId._id
+        : currentSelectedInvoice.clienteId;
+
+    const cliente = clientes.find(c => c._id === clienteId);
     const total = (currentSelectedInvoice.montoTotal || 0) + (currentSelectedInvoice.montoMora || 0);
-    
+
+    if (!cliente) {
+        showMessage('Error: No se encontró información del cliente', 'error');
+        return;
+    }
+
+    // Mostrar resumen en el modal
     detailsDiv.innerHTML = `
         <div class="confirm-details">
             <p><strong>Cliente:</strong> ${cliente.nombres} ${cliente.apellidos}</p>
@@ -700,7 +716,7 @@ function showConfirmPaymentModal(paymentData) {
             ${paymentData.metodoPago === 'cheque' ? `<p><strong>Cheque No.:</strong> ${paymentData.numeroCheque} (${paymentData.bancoCheque})</p>` : ''}
         </div>
     `;
-    
+
     modal.style.display = 'block';
 }
 
@@ -712,36 +728,50 @@ async function confirmPaymentRegistration() {
         showMessage('Error: datos de pago no encontrados', 'error');
         return;
     }
-    
+
     try {
         showMessage('Procesando pago...', 'info');
-        
+
+        // Debug: mostrar datos que se enviarán
+        console.log('Datos del pago a enviar:', JSON.stringify(pendingPaymentData, null, 2));
+
         const response = await apiRequest(API_ENDPOINTS.pagos, {
             method: 'POST',
             body: JSON.stringify(pendingPaymentData)
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success) {
+            const pagoId = data.data._id;
             showMessage('✅ Pago registrado exitosamente y DTE generado', 'success');
-            
+
+            // Descargar ticket automáticamente
+            try {
+                showMessage('📄 Descargando ticket de pago...', 'info');
+                await descargarTicketPago(pagoId);
+                showMessage('✅ Ticket descargado correctamente', 'success');
+            } catch (ticketError) {
+                console.error('Error al descargar ticket:', ticketError);
+                showMessage('⚠️ Pago registrado pero no se pudo descargar el ticket automáticamente', 'warning');
+            }
+
             // Cerrar modal
             closeConfirmPaymentModal();
-            
+
             // Resetear formulario
             document.getElementById('paymentForm').reset();
             hideInvoiceInfo();
             document.getElementById('clienteSelect').value = '';
             document.getElementById('pendingInvoicesSection').classList.add('hidden');
-            
+
             // Actualizar datos
             await refreshData();
-            
+
         } else {
             throw new Error(data.message);
         }
-        
+
     } catch (error) {
         console.error('Error al procesar pago:', error);
         showMessage(`Error al procesar el pago: ${error.message}`, 'error');
@@ -796,41 +826,117 @@ async function viewPaymentDetails(pagoId) {
     try {
         const response = await apiRequest(`${API_ENDPOINTS.pagos}/${pagoId}`);
         const data = await response.json();
-        
+
         if (data.success) {
             const pago = data.data;
             const cliente = pago.clienteId;
             const factura = pago.facturaId;
-            
+
             const modalContent = `
                 <div class="payment-details">
                     <h4>Detalles del Pago</h4>
                     <div class="detail-grid">
-                        <p><strong>ID Pago:</strong> ${pago._id}</p>
+                        <p><strong>Número de Pago:</strong> ${pago.numeroPago || pago._id}</p>
                         <p><strong>Cliente:</strong> ${cliente.nombres} ${cliente.apellidos}</p>
                         <p><strong>Factura:</strong> ${factura.numeroFactura}</p>
                         <p><strong>Fecha de Pago:</strong> ${formatDate(pago.fechaPago)}</p>
-                        <p><strong>Monto Pagado:</strong> ${formatCurrency(pago.montoPagado)}</p>
+                        <p><strong>Monto Original:</strong> ${formatCurrency(pago.montoOriginal || 0)}</p>
+                        ${pago.montoMora > 0 ? `<p><strong>Mora:</strong> ${formatCurrency(pago.montoMora)}</p>` : ''}
+                        ${pago.montoReconexion > 0 ? `<p><strong>Reconexión:</strong> ${formatCurrency(pago.montoReconexion)}</p>` : ''}
+                        <p><strong>Total Pagado:</strong> <span style="color: #27ae60; font-size: 1.1em;">${formatCurrency(pago.montoPagado)}</span></p>
                         <p><strong>Método:</strong> ${capitalizeFirst(pago.metodoPago)}</p>
                         ${pago.referenciaPago ? `<p><strong>Referencia:</strong> ${pago.referenciaPago}</p>` : ''}
                         ${pago.bancoCheque ? `<p><strong>Banco:</strong> ${pago.bancoCheque}</p>` : ''}
                         ${pago.numeroCheque ? `<p><strong>No. Cheque:</strong> ${pago.numeroCheque}</p>` : ''}
-                        <p><strong>Estado FEL:</strong> ${pago.fel?.generado ? 'Generado' : 'Pendiente'}</p>
+                        <p><strong>Estado FEL:</strong> ${pago.fel?.generado ? '✅ Generado' : '⏳ Pendiente'}</p>
                         ${pago.observaciones ? `<p><strong>Observaciones:</strong> ${pago.observaciones}</p>` : ''}
+                    </div>
+                    <div style="margin-top: 20px; text-align: center;">
+                        <button class="btn-primary" onclick="descargarTicketPago('${pago._id}')" style="padding: 10px 20px;">
+                            📄 Descargar Ticket PDF
+                        </button>
                     </div>
                 </div>
             `;
-            
-            document.getElementById('paymentDetailsContent').innerHTML = modalContent;
-            document.getElementById('paymentDetailsModal').style.display = 'block';
-            
+
+            document.getElementById('paymentDetails-modal').innerHTML = modalContent;
+            document.getElementById('paymentModal').style.display = 'block';
+
         } else {
             throw new Error(data.message);
         }
-        
+
     } catch (error) {
         console.error('Error al cargar detalles del pago:', error);
         showMessage('Error al cargar detalles del pago', 'error');
+    }
+}
+
+/**
+ * Descargar ticket PDF de un pago
+ * @param {string} pagoId - ID del pago
+ */
+async function descargarTicketPago(pagoId) {
+    try {
+        const token = sessionStorage.getItem('auth_token');
+
+        const response = await fetch(`${API_ENDPOINTS.pagos}/${pagoId}/ticket`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al descargar ticket');
+        }
+
+        // Obtener el blob del PDF
+        const blob = await response.blob();
+
+        // Obtener el nombre del archivo desde el header Content-Disposition
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'ticket-pago.pdf';
+
+        if (contentDisposition) {
+            // Mejorar la extracción del nombre del archivo
+            // Soportar: filename="nombre.pdf" o filename=nombre.pdf o filename*=UTF-8''nombre.pdf
+            const utf8Match = contentDisposition.match(/filename\*=UTF-8''(.+)/i);
+            const quotedMatch = contentDisposition.match(/filename="(.+?)"/i);
+            const unquotedMatch = contentDisposition.match(/filename=([^;]+)/i);
+
+            if (utf8Match && utf8Match[1]) {
+                filename = decodeURIComponent(utf8Match[1]);
+            } else if (quotedMatch && quotedMatch[1]) {
+                filename = quotedMatch[1];
+            } else if (unquotedMatch && unquotedMatch[1]) {
+                filename = unquotedMatch[1].trim();
+            }
+
+            // Limpiar caracteres no deseados y asegurar extensión .pdf
+            filename = filename.replace(/['"]/g, '').trim();
+            if (!filename.endsWith('.pdf')) {
+                filename = filename.replace(/\.pdf_?$/, '') + '.pdf';
+            }
+        }
+
+        // Crear URL temporal y descargar
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+
+        // Limpiar
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        return true;
+    } catch (error) {
+        console.error('Error al descargar ticket:', error);
+        throw error;
     }
 }
 
@@ -840,16 +946,16 @@ async function viewPaymentDetails(pagoId) {
 async function refreshData() {
     try {
         showMessage('Actualizando datos...', 'info');
-        
+
         // Cargar datos en paralelo
         await Promise.all([
             loadClientes(),
             loadFacturasPendientes(),
             loadHistorialPagos()
         ]);
-        
+
         showMessage('Datos actualizados correctamente', 'success');
-        
+
     } catch (error) {
         console.error('Error al actualizar datos:', error);
         showMessage('Error al actualizar los datos', 'error');
@@ -946,7 +1052,7 @@ function applyFilters() {
         
         // Filtro de búsqueda
         const matchesSearch = !searchTerm || 
-            (cliente?.nombre || '').toLowerCase().includes(searchTerm) ||
+            (cliente?.nombres || '').toLowerCase().includes(searchTerm) ||
             (cliente?.apellidos || '').toLowerCase().includes(searchTerm) ||
             factura.numeroFactura.toLowerCase().includes(searchTerm) ||
             (cliente?.proyecto || '').toLowerCase().includes(searchTerm);

@@ -3,6 +3,7 @@ const Pago = require('../models/pago.model');
 const Factura = require('../models/factura.model');
 const Cliente = require('../models/cliente.model');
 const mongoose = require('mongoose');
+const ticketPagoService = require('../services/ticketPago.service');
 
 /**
  * Obtener todos los pagos con filtros opcionales
@@ -175,9 +176,6 @@ exports.getFacturasPendientesCliente = async (req, res) => {
  * Registrar un nuevo pago
  */
 exports.registrarPago = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const {
       facturaId,
@@ -199,11 +197,9 @@ exports.registrarPago = async (req, res) => {
 
     // Obtener la factura y verificar que existe y está pendiente
     const factura = await Factura.findById(facturaId)
-      .populate('clienteId')
-      .session(session);
+      .populate('clienteId');
 
     if (!factura) {
-      await session.abortTransaction();
       return res.status(404).json({
         success: false,
         message: 'Factura no encontrada'
@@ -211,7 +207,6 @@ exports.registrarPago = async (req, res) => {
     }
 
     if (factura.estado !== 'pendiente' && factura.estado !== 'vencida') {
-      await session.abortTransaction();
       return res.status(400).json({
         success: false,
         message: 'La factura no está pendiente de pago'
@@ -220,11 +215,10 @@ exports.registrarPago = async (req, res) => {
 
     // Calcular mora actual
     const mora = factura.calcularMora();
-    
+
     // Verificar si hay pagos previos para esta factura
-    const pagoExistente = await Pago.findOne({ facturaId }).session(session);
+    const pagoExistente = await Pago.findOne({ facturaId });
     if (pagoExistente) {
-      await session.abortTransaction();
       return res.status(400).json({
         success: false,
         message: 'Esta factura ya tiene un pago registrado'
@@ -262,7 +256,7 @@ exports.registrarPago = async (req, res) => {
 
     // Crear el pago
     const pago = new Pago(datosPago);
-    await pago.save({ session });
+    await pago.save();
 
     // Actualizar la factura como pagada
     await Factura.findByIdAndUpdate(
@@ -274,8 +268,7 @@ exports.registrarPago = async (req, res) => {
         referenciaPago: pago.referenciaPago,
         diasMora: mora.diasMora,
         montoMora: mora.montoMora
-      },
-      { session }
+      }
     );
 
     // Generar DTE (Documento Tributario Electrónico)
@@ -283,11 +276,23 @@ exports.registrarPago = async (req, res) => {
       await pago.generarDTE();
     } catch (dteError) {
       console.error('Error al generar DTE:', dteError);
-      // No abortamos la transacción por errores de DTE
+      // No fallamos el registro por errores de DTE
       // El pago se registra pero sin DTE
     }
 
-    await session.commitTransaction();
+    // Generar ticket automáticamente
+    try {
+      const ticketResultado = await ticketPagoService.generarTicketPago(pago._id);
+
+      if (ticketResultado.exitoso) {
+        console.log('✅ Ticket generado:', ticketResultado.nombreArchivo);
+      } else {
+        console.warn('⚠️ No se pudo generar el ticket:', ticketResultado.mensaje);
+      }
+    } catch (ticketError) {
+      console.error('❌ Error al generar ticket automáticamente:', ticketError);
+      // No fallar la creación del pago si el ticket falla
+    }
 
     // Obtener el pago completo para la respuesta
     const pagoCompleto = await Pago.findById(pago._id)
@@ -302,9 +307,8 @@ exports.registrarPago = async (req, res) => {
     });
 
   } catch (error) {
-    await session.abortTransaction();
     console.error('Error al registrar pago:', error);
-    
+
     if (error.name === 'ValidationError') {
       return res.status(400).json({
         success: false,
@@ -318,8 +322,6 @@ exports.registrarPago = async (req, res) => {
       message: 'Error interno del servidor',
       error: error.message
     });
-  } finally {
-    session.endSession();
   }
 };
 
@@ -462,17 +464,13 @@ exports.getHistorialPagos = async (req, res) => {
  * Cancelar un pago
  */
 exports.cancelarPago = async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const { id } = req.params;
     const { motivo } = req.body;
 
-    const pago = await Pago.findById(id).session(session);
+    const pago = await Pago.findById(id);
 
     if (!pago) {
-      await session.abortTransaction();
       return res.status(404).json({
         success: false,
         message: 'Pago no encontrado'
@@ -480,7 +478,6 @@ exports.cancelarPago = async (req, res) => {
     }
 
     if (pago.estado === 'cancelado') {
-      await session.abortTransaction();
       return res.status(400).json({
         success: false,
         message: 'El pago ya está cancelado'
@@ -500,11 +497,8 @@ exports.cancelarPago = async (req, res) => {
         referenciaPago: null,
         diasMora: 0,
         montoMora: 0
-      },
-      { session }
+      }
     );
-
-    await session.commitTransaction();
 
     res.json({
       success: true,
@@ -513,15 +507,12 @@ exports.cancelarPago = async (req, res) => {
     });
 
   } catch (error) {
-    await session.abortTransaction();
     console.error('Error al cancelar pago:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
       error: error.message
     });
-  } finally {
-    session.endSession();
   }
 };
 
@@ -610,6 +601,44 @@ exports.regenerarDTE = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al regenerar DTE',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Generar ticket PDF para un pago
+ */
+exports.generarTicketPago = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Llamar al servicio
+    const resultado = await ticketPagoService.generarTicketPago(id);
+
+    if (resultado.exitoso) {
+      // Enviar el archivo PDF
+      res.download(resultado.rutaArchivo, resultado.nombreArchivo, (err) => {
+        if (err) {
+          console.error('Error al enviar ticket:', err);
+          res.status(500).json({
+            success: false,
+            message: 'Error al descargar el ticket'
+          });
+        }
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: resultado.mensaje
+      });
+    }
+
+  } catch (error) {
+    console.error('Error al generar ticket:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
       error: error.message
     });
   }
