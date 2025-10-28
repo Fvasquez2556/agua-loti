@@ -213,8 +213,39 @@ exports.registrarPago = async (req, res) => {
       });
     }
 
+    // ✅ VALIDACIÓN: Verificar si el cliente tiene 2 o más facturas vencidas
+    const facturasVencidas = await Factura.countDocuments({
+      clienteId: factura.clienteId._id,
+      estado: { $in: ['pendiente', 'vencida'] },
+      fechaVencimiento: { $lt: new Date() }
+    });
+
+    if (facturasVencidas >= 2) {
+      return res.status(403).json({
+        success: false,
+        message: 'El cliente tiene 2 o más facturas vencidas. Debe procesar el pago a través del módulo de Reconexión.',
+        requiereReconexion: true,
+        facturasVencidas: facturasVencidas,
+        clienteId: factura.clienteId._id
+      });
+    }
+
     // Calcular mora actual
     const mora = factura.calcularMora();
+
+    // ✅ Verificar si requiere reconexión (1 factura vencida con más de 60 días)
+    let costoReconexion = 0;
+    let requiereReconexion = false;
+
+    if (facturasVencidas === 1 && mora.diasMora > 60) {
+      costoReconexion = 125.00;
+      requiereReconexion = true;
+
+      // Actualizar la factura con el costo de reconexión
+      factura.requiereReconexion = true;
+      factura.costoReconexion = costoReconexion;
+      await factura.save();
+    }
 
     // Verificar si hay pagos previos para esta factura
     const pagoExistente = await Pago.findOne({ facturaId });
@@ -236,13 +267,15 @@ exports.registrarPago = async (req, res) => {
       fechaPago: fechaPago ? new Date(fechaPago) : new Date(),
       montoOriginal: factura.montoTotal,
       montoMora: mora.montoMora,
-      montoReconexion: factura.costoReconexion || 0,
-      montoPagado: factura.montoTotal + mora.montoMora + (factura.costoReconexion || 0),
+      montoReconexion: costoReconexion,
+      montoPagado: factura.montoTotal + mora.montoMora + costoReconexion,
       metodoPago,
       referenciaPago,
       bancoCheque: metodoPago === 'cheque' ? bancoCheque : null,
       numeroCheque: metodoPago === 'cheque' ? numeroCheque : null,
-      observaciones,
+      observaciones: requiereReconexion
+        ? (observaciones ? observaciones + '\n' : '') + `Incluye costo de reconexión: Q${costoReconexion.toFixed(2)}`
+        : observaciones,
       registradoPor: req.user.id,
       facturaSnapshot: {
         numeroFactura: factura.numeroFactura,
@@ -250,7 +283,9 @@ exports.registrarPago = async (req, res) => {
         fechaVencimiento: factura.fechaVencimiento,
         diasMora: mora.diasMora,
         periodoInicio: factura.periodoInicio,
-        periodoFin: factura.periodoFin
+        periodoFin: factura.periodoFin,
+        requiereReconexion: requiereReconexion,
+        costoReconexion: costoReconexion
       }
     };
 

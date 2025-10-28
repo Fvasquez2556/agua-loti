@@ -13,6 +13,7 @@ const lecturaRoutes = require("./routes/lectura.routes"); // ✅ Nueva ruta para
 const pagoRoutes = require("./routes/pago.routes"); // ✅ Nueva ruta para pagos
 const moraRoutes = require('./routes/mora.routes');
 const reconexionRoutes = require('./routes/reconexion.routes');
+const facturaAdminRoutes = require('./routes/factura.admin.routes');
 
 // Inicializar app
 const app = express();
@@ -49,6 +50,7 @@ app.use("/api/lecturas", lecturaRoutes); // ✅ Nueva ruta para lecturas
 app.use("/api/pagos", pagoRoutes); // ✅ Nueva ruta para pagos
 app.use('/api/mora', moraRoutes);
 app.use('/api/reconexion', reconexionRoutes);
+app.use('/api/facturas/admin', facturaAdminRoutes); // ✅ Rutas administrativas de facturas
 
 // Ruta de prueba
 app.get('/api/test', (req, res) => {

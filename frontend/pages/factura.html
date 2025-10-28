@@ -176,6 +176,64 @@
                 </div>
             </section>
 
+            <!-- ========================================= -->
+            <!-- SECCIÓN DE ADMINISTRACIÓN -->
+            <!-- ========================================= -->
+            <section class="admin-section" id="adminSection">
+                <div class="admin-header">
+                    <h2 class="section-title">⚙️ Panel de Administración</h2>
+                    <p class="admin-subtitle">Funciones especiales para pruebas y gestión de facturas</p>
+                </div>
+
+                <div class="admin-cards">
+                    <!-- Card 1: Generar Hash de Contraseña -->
+                    <div class="admin-card">
+                        <div class="admin-card-icon">🔐</div>
+                        <h3>Generar Contraseña</h3>
+                        <p>Generar hash de contraseña administrativa (solo primera vez)</p>
+                        <button type="button" class="btn-admin" onclick="openGenerateHashModal()">
+                            Generar Hash
+                        </button>
+                    </div>
+
+                    <!-- Card 2: Crear Factura con Fecha -->
+                    <div class="admin-card">
+                        <div class="admin-card-icon">📅</div>
+                        <h3>Factura Personalizada</h3>
+                        <p>Crear factura con fechas personalizadas para pruebas</p>
+                        <button type="button" class="btn-admin" onclick="openCustomInvoiceModal()">
+                            Crear Factura
+                        </button>
+                    </div>
+
+                    <!-- Card 3: Modificar Fecha de Vencimiento -->
+                    <div class="admin-card">
+                        <div class="admin-card-icon">✏️</div>
+                        <h3>Modificar Fecha</h3>
+                        <p>Cambiar fecha de vencimiento de factura existente</p>
+                        <button type="button" class="btn-admin" onclick="openModifyDateModal()">
+                            Modificar Fecha
+                        </button>
+                    </div>
+
+                    <!-- Card 4: Generar Lote de Prueba -->
+                    <div class="admin-card">
+                        <div class="admin-card-icon">📦</div>
+                        <h3>Lote de Prueba</h3>
+                        <p>Generar múltiples facturas con diferentes estados de mora</p>
+                        <button type="button" class="btn-admin" onclick="openBatchModal()">
+                            Generar Lote
+                        </button>
+                    </div>
+                </div>
+
+                <div class="admin-warning">
+                    <strong>⚠️ Advertencia:</strong> Estas funciones están diseñadas para desarrollo y pruebas.
+                    Las facturas creadas se marcan como "MODO PRUEBA".
+                    <br>Estado actual: <span id="adminStatus">Verificando...</span>
+                </div>
+            </section>
+
             <!-- Sección de Vista Previa de Factura -->
             <section class="invoice-preview-section">
                 <h2 class="section-title">Vista Previa de Factura</h2>
@@ -277,9 +335,188 @@
         </div>
     </div>
 
+    <!-- ========================================= -->
+    <!-- MODALES DE ADMINISTRACIÓN -->
+    <!-- ========================================= -->
+
+    <!-- Modal: Generar Hash de Contraseña -->
+    <div id="generateHashModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔐 Generar Hash de Contraseña</h3>
+                <span class="close-modal" onclick="closeGenerateHashModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Genera un hash seguro para la contraseña administrativa. Solo necesitas hacer esto una vez.</p>
+                <div class="form-group">
+                    <label for="adminPassword">Contraseña:</label>
+                    <input type="password" id="adminPassword" placeholder="Ingresa una contraseña segura" required>
+                </div>
+                <div id="hashResult" class="hash-result hidden">
+                    <p><strong>Hash generado:</strong></p>
+                    <textarea id="hashOutput" readonly rows="3"></textarea>
+                    <button type="button" class="btn-secondary" onclick="copyHash()">📋 Copiar Hash</button>
+                    <p class="hash-instructions">
+                        <strong>Instrucciones:</strong><br>
+                        1. Copia el hash generado<br>
+                        2. Pégalo en el archivo .env en la variable ADMIN_FECHA_PASSWORD<br>
+                        3. Reinicia el servidor
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeGenerateHashModal()">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="generateHash()">✅ Generar Hash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Crear Factura con Fecha Personalizada -->
+    <div id="customInvoiceModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>📅 Crear Factura con Fecha Personalizada</h3>
+                <span class="close-modal" onclick="closeCustomInvoiceModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="customInvoiceForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="customClienteId">Cliente *</label>
+                            <select id="customClienteId" required>
+                                <option value="">Seleccionar cliente...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h4>Lecturas</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="customLecturaAnterior">Lectura Anterior (Litros) *</label>
+                            <input type="number" id="customLecturaAnterior" value="1000" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="customLecturaActual">Lectura Actual (Litros) *</label>
+                            <input type="number" id="customLecturaActual" value="5000" required>
+                        </div>
+                    </div>
+
+                    <h4>Fechas Personalizadas</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="customFechaEmision">Fecha de Emisión *</label>
+                            <input type="date" id="customFechaEmision" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="customFechaVencimiento">Fecha de Vencimiento *</label>
+                            <input type="date" id="customFechaVencimiento" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="customPeriodoInicio">Período Desde *</label>
+                            <input type="date" id="customPeriodoInicio" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="customPeriodoFin">Período Hasta *</label>
+                            <input type="date" id="customPeriodoFin" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="customFechaLectura">Fecha de Lectura *</label>
+                        <input type="date" id="customFechaLectura" required>
+                    </div>
+
+                    <div class="quick-dates">
+                        <p><strong>Fechas Rápidas:</strong></p>
+                        <button type="button" class="btn-quick" onclick="setQuickDate('vencida30')">Vencida hace 30 días</button>
+                        <button type="button" class="btn-quick" onclick="setQuickDate('vencida60')">Vencida hace 60 días</button>
+                        <button type="button" class="btn-quick" onclick="setQuickDate('venceManana')">Vence mañana</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeCustomInvoiceModal()">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="createCustomInvoice()">✅ Crear Factura</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Modificar Fecha de Vencimiento -->
+    <div id="modifyDateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>✏️ Modificar Fecha de Vencimiento</h3>
+                <span class="close-modal" onclick="closeModifyDateModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="modifyDateForm">
+                    <div class="form-group">
+                        <label for="modifyFacturaId">Número de Factura *</label>
+                        <input type="text" id="modifyFacturaId" placeholder="FAC-202510-0001" required>
+                        <small>Buscar factura por número</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modifyNuevaFecha">Nueva Fecha de Vencimiento *</label>
+                        <input type="date" id="modifyNuevaFecha" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modifyPassword">Contraseña Administrativa *</label>
+                        <input type="password" id="modifyPassword" placeholder="Contraseña admin" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modifyMotivo">Motivo del Cambio *</label>
+                        <textarea id="modifyMotivo" rows="3" placeholder="Ej: Extensión por solicitud del cliente" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModifyDateModal()">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="modifyInvoiceDate()">✅ Modificar Fecha</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Generar Lote de Prueba -->
+    <div id="batchModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📦 Generar Lote de Facturas de Prueba</h3>
+                <span class="close-modal" onclick="closeBatchModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Genera múltiples facturas con diferentes estados de mora para pruebas del sistema.</p>
+                <form id="batchForm">
+                    <div class="form-group">
+                        <label for="batchClienteId">Cliente *</label>
+                        <select id="batchClienteId" required>
+                            <option value="">Seleccionar cliente...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="batchCantidad">Cantidad de Facturas *</label>
+                        <input type="number" id="batchCantidad" value="5" min="1" max="10" required>
+                        <small>Se generarán facturas con: sin mora, 10 días, 30 días, 60 días, 90 días de mora</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeBatchModal()">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="generateBatch()">✅ Generar Lote</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="../js/auth.js"></script>
     <script src="../js/pageProtection.js"></script>
     <script src="../js/factura.js"></script>
+    <script src="../js/factura.admin.js"></script>
 </body>
 </html>

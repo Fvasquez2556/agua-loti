@@ -6,7 +6,9 @@
 const Factura = require('../models/factura.model');
 const Cliente = require('../models/cliente.model');
 const Reconexion = require('../models/reconexion.model');
+const Pago = require('../models/pago.model');
 const moraService = require('./mora.service');
+const ticketPagoService = require('./ticketPago.service');
 const mongoose = require('mongoose');
 
 class ReconexionService {
@@ -146,11 +148,9 @@ class ReconexionService {
 
   /**
    * Procesa el pago de reconexión
+   * NOTA: No se usan transacciones para compatibilidad con MongoDB standalone
    */
   async procesarReconexion(clienteId, opcion, datosPago) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
     try {
       const opciones = await this.calcularOpcionesReconexion(clienteId);
 
@@ -170,12 +170,11 @@ class ReconexionService {
         );
       }
 
-      // Marcar facturas como pagadas
-      const facturasPagadas = await this.aplicarPagosFacturas(
+      // Marcar facturas como pagadas y crear registros de pago
+      const resultadoPagos = await this.aplicarPagosFacturas(
         clienteId,
         opcionSeleccionada,
-        datosPago,
-        session
+        datosPago
       );
 
       // Actualizar estado del cliente
@@ -185,56 +184,86 @@ class ReconexionService {
           estadoServicio: 'activo',
           fechaUltimaReconexion: new Date(),
           $inc: { numeroReconexiones: 1 }
-        },
-        { session }
+        }
       );
 
       // Crear registro de reconexión
-      const reconexion = await Reconexion.create([{
+      const reconexion = await Reconexion.create({
         clienteId,
         tipoOpcion: opcion,
         montoTotal: datosPago.monto,
         montoDeuda: opcionSeleccionada.montoDeuda,
         costoReconexion: opcionSeleccionada.costoReconexion,
         saldoPendiente: opcionSeleccionada.saldoPendiente,
-        facturasPagadas: facturasPagadas.map(f => f._id),
+        facturasPagadas: resultadoPagos.facturasPagadas.map(f => f._id),
         metodoPago: datosPago.metodoPago,
         referencia: datosPago.referencia,
         procesadoPor: datosPago.usuarioId,
         fechaReconexion: new Date()
-      }], { session });
+      });
 
-      await session.commitTransaction();
+      // Generar UN SOLO ticket consolidado con todas las facturas
+      let ticketConsolidado = null;
+      try {
+        const pagosIds = resultadoPagos.pagosCreados.map(p => p._id);
+        const ticketResultado = await ticketPagoService.generarTicketReconexionConsolidado(
+          pagosIds,
+          {
+            reconexionId: reconexion._id,
+            tipoOpcion: opcion,
+            clienteId: clienteId
+          }
+        );
+
+        if (ticketResultado.exitoso) {
+          console.log(`✅ Ticket consolidado de reconexión generado:`, ticketResultado.nombreArchivo);
+          console.log(`   - Incluye ${resultadoPagos.pagosCreados.length} factura(s) pagada(s)`);
+          console.log(`   - Ruta: ${ticketResultado.rutaArchivo}`);
+
+          ticketConsolidado = {
+            nombreArchivo: ticketResultado.nombreArchivo,
+            rutaArchivo: ticketResultado.rutaArchivo,
+            facturas: resultadoPagos.facturasPagadas.map(f => f.numeroFactura),
+            pagos: resultadoPagos.pagosCreados.map(p => p.numeroPago)
+          };
+        } else {
+          console.warn(`⚠️ No se pudo generar ticket consolidado:`, ticketResultado.mensaje);
+        }
+      } catch (ticketError) {
+        console.error(`❌ Error al generar ticket consolidado:`, ticketError);
+        // No fallar la reconexión si falla la generación del ticket
+      }
 
       return {
         exitoso: true,
         mensaje: 'Reconexión procesada exitosamente',
-        reconexionId: reconexion[0]._id,
-        facturasPagadas: facturasPagadas.length,
+        reconexionId: reconexion._id,
+        facturasPagadas: resultadoPagos.facturasPagadas.length,
+        pagosGenerados: resultadoPagos.pagosCreados.length,
+        ticketConsolidado: ticketConsolidado,
         saldoPendiente: opcionSeleccionada.saldoPendiente,
         fechaReconexion: new Date()
       };
 
     } catch (error) {
-      await session.abortTransaction();
       console.error('[ReconexionService] Error al procesar reconexión:', error);
       throw error;
-    } finally {
-      session.endSession();
     }
   }
 
   /**
-   * Aplica los pagos a las facturas correspondientes
+   * Aplica los pagos a las facturas correspondientes y crea registros de pago
    */
-  async aplicarPagosFacturas(clienteId, opcionSeleccionada, datosPago, session) {
+  async aplicarPagosFacturas(clienteId, opcionSeleccionada, datosPago) {
     const facturasPagadas = [];
+    const pagosCreados = [];
     const facturasPendientes = await Factura.find({
       clienteId,
-      estado: 'pendiente'
-    }).sort({ fechaEmision: 1 }).session(session);
+      estado: { $in: ['pendiente', 'vencida'] }
+    }).sort({ fechaEmision: 1 });
 
     let montoDisponible = opcionSeleccionada.montoDeuda;
+    const costoReconexionPorFactura = opcionSeleccionada.costoReconexion / facturasPendientes.length;
 
     for (const factura of facturasPendientes) {
       const mora = moraService.calcularMoraFactura(factura);
@@ -246,16 +275,49 @@ class ReconexionService {
         factura.fechaPago = new Date();
         factura.metodoPago = datosPago.metodoPago;
         factura.montoMora = mora.montoMora;
-        await factura.save({ session });
+        factura.diasMora = mora.diasMora;
+        factura.requiereReconexion = true;
+        factura.costoReconexion = costoReconexionPorFactura;
+        await factura.save();
+
+        // Crear registro de pago
+        const numeroPago = await Pago.generarNumeroPago();
+        const pago = await Pago.create({
+          numeroPago,
+          facturaId: factura._id,
+          clienteId: clienteId,
+          fechaPago: new Date(),
+          montoOriginal: factura.montoTotal,
+          montoMora: mora.montoMora,
+          montoReconexion: costoReconexionPorFactura,
+          montoPagado: totalFactura + costoReconexionPorFactura,
+          metodoPago: datosPago.metodoPago,
+          referenciaPago: datosPago.referencia,
+          observaciones: `Pago procesado vía reconexión. Opción: ${opcionSeleccionada.descripcion}`,
+          registradoPor: datosPago.usuarioId,
+          facturaSnapshot: {
+            numeroFactura: factura.numeroFactura,
+            fechaEmision: factura.fechaEmision,
+            fechaVencimiento: factura.fechaVencimiento,
+            diasMora: mora.diasMora,
+            periodoInicio: factura.periodoInicio,
+            periodoFin: factura.periodoFin,
+            requiereReconexion: true,
+            costoReconexion: costoReconexionPorFactura
+          }
+        });
 
         facturasPagadas.push(factura);
+        pagosCreados.push(pago);
         montoDisponible -= totalFactura;
+
       } else if (montoDisponible > 0) {
-        // Pago parcial
+        // Pago parcial - solo actualizar observaciones
         factura.observaciones = (factura.observaciones || '') +
-          `\nPago parcial de Q${montoDisponible.toFixed(2)} el ${new Date().toLocaleDateString()}`;
+          `\nPago parcial de Q${montoDisponible.toFixed(2)} el ${new Date().toLocaleDateString()} vía reconexión`;
         factura.montoMora = mora.montoMora;
-        await factura.save({ session });
+        factura.diasMora = mora.diasMora;
+        await factura.save();
 
         montoDisponible = 0;
       }
@@ -263,7 +325,10 @@ class ReconexionService {
       if (montoDisponible <= 0) break;
     }
 
-    return facturasPagadas;
+    return {
+      facturasPagadas,
+      pagosCreados
+    };
   }
 }
 
