@@ -62,10 +62,10 @@ exports.procesarReconexion = async (req, res) => {
 
     // Log de éxito con detalles
     console.log('✅ Reconexión procesada exitosamente:');
-    console.log(`   - Facturas pagadas: ${resultado.facturasPagadas}`);
-    console.log(`   - Pagos generados: ${resultado.pagosGenerados}`);
+    console.log(`   - Factura consolidada: ${resultado.facturaConsolidada}`);
+    console.log(`   - Facturas originales: ${resultado.facturasOriginales}`);
     if (resultado.ticketConsolidado) {
-      console.log(`   - Ticket consolidado: ${resultado.ticketConsolidado.nombreArchivo}`);
+      console.log(`   - Ticket: ${resultado.ticketConsolidado.nombreArchivo}`);
     }
 
     res.json({
@@ -73,7 +73,7 @@ exports.procesarReconexion = async (req, res) => {
       message: 'Reconexión procesada exitosamente',
       data: {
         ...resultado,
-        mensaje: `Se procesó la reconexión. ${resultado.pagosGenerados} pago(s) registrado(s) y ticket consolidado generado.`
+        mensaje: `Se procesó la reconexión. Factura consolidada: ${resultado.facturaConsolidada}. Incluye ${resultado.facturasOriginales} mes(es).`
       }
     });
 

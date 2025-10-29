@@ -840,6 +840,344 @@ class TicketPagoService {
       align: 'center'
     });
   }
+
+  /**
+   * Genera ticket para factura consolidada de reconexión
+   * @param {string} facturaConsolidadaId - ID de la factura consolidada
+   * @returns {Promise<Object>} Resultado de la operación
+   */
+  async generarTicketFacturaConsolidada(facturaConsolidadaId) {
+    try {
+      // Obtener factura consolidada con población completa
+      const factura = await Factura.findById(facturaConsolidadaId)
+        .populate('clienteId', 'nombres apellidos dpi contador lote proyecto');
+
+      if (!factura) {
+        return {
+          exitoso: false,
+          mensaje: 'Factura consolidada no encontrada',
+          rutaArchivo: null,
+          nombreArchivo: null
+        };
+      }
+
+      if (factura.tipoFactura !== 'reconexion') {
+        return {
+          exitoso: false,
+          mensaje: 'Esta factura no es de tipo reconexión',
+          rutaArchivo: null,
+          nombreArchivo: null
+        };
+      }
+
+      // Preparar directorio
+      const fechaPago = new Date(factura.fechaPago || factura.fechaEmision);
+      const anio = fechaPago.getFullYear();
+      const mes = String(fechaPago.getMonth() + 1).padStart(2, '0');
+      const directorioTickets = this.asegurarDirectorioTickets(anio, mes);
+
+      // Generar nombre de archivo
+      const fechaFormateada = `${anio}${mes}${String(fechaPago.getDate()).padStart(2, '0')}`;
+      const nombreArchivo = `RECONEXION-${factura.numeroFactura}-${fechaFormateada}.pdf`;
+      const rutaCompleta = path.join(directorioTickets, nombreArchivo);
+
+      // Generar código QR
+      const datosQR = {
+        tipo: 'reconexion',
+        numeroFactura: factura.numeroFactura,
+        fecha: factura.fechaEmision.toISOString(),
+        totalPagado: factura.montoTotal,
+        cantidadFacturas: factura.facturasConsolidadas.length,
+        hash: this.crearHashVerificacion({
+          numeroPago: factura.numeroFactura,
+          fecha: factura.fechaEmision,
+          monto: factura.montoTotal
+        })
+      };
+      const bufferQR = await this.generarCodigoQR(datosQR);
+
+      // Crear documento PDF
+      const doc = new PDFDocument({
+        size: [this.anchoTicket, 841.89],
+        margins: {
+          top: this.margen,
+          bottom: this.margen,
+          left: this.margen,
+          right: this.margen
+        }
+      });
+
+      // Stream
+      const stream = fs.createWriteStream(rutaCompleta);
+      doc.pipe(stream);
+
+      // Generar contenido
+      await this.generarContenidoTicketFacturaConsolidada(doc, factura, bufferQR);
+
+      // Finalizar
+      doc.end();
+
+      await new Promise((resolve, reject) => {
+        stream.on('finish', resolve);
+        stream.on('error', reject);
+      });
+
+      return {
+        exitoso: true,
+        mensaje: 'Ticket de reconexión generado exitosamente',
+        rutaArchivo: rutaCompleta,
+        nombreArchivo: nombreArchivo
+      };
+
+    } catch (error) {
+      console.error('Error al generar ticket de reconexión:', error);
+      return {
+        exitoso: false,
+        mensaje: `Error: ${error.message}`,
+        rutaArchivo: null,
+        nombreArchivo: null
+      };
+    }
+  }
+
+  /**
+   * Genera el contenido del ticket para factura consolidada
+   * @private
+   */
+  async generarContenidoTicketFacturaConsolidada(doc, factura, bufferQR) {
+    let y = doc.y;
+    const cliente = factura.clienteId;
+
+    // HEADER
+    doc.font(this.fuentePrincipal)
+       .fontSize(this.tamanoFuenteTitulo)
+       .text('SISTEMA DE AGUA LOTI', this.margen, y, {
+         width: this.anchoContenido,
+         align: 'center'
+       });
+
+    y = doc.y + 5;
+    doc.fontSize(this.tamanoFuenteNormal)
+       .text('Huehuetenango, Guatemala', this.margen, y, {
+         width: this.anchoContenido,
+         align: 'center'
+       });
+
+    y = doc.y + 15;
+    doc.moveTo(this.margen, y).lineTo(this.anchoTicket - this.margen, y).stroke();
+    y += 15;
+
+    // TÍTULO
+    doc.fontSize(this.tamanoFuenteGrande)
+       .text('RECIBO DE RECONEXIÓN', this.margen, y, {
+         width: this.anchoContenido,
+         align: 'center'
+       });
+
+    y = doc.y + 10;
+
+    doc.fontSize(this.tamanoFuenteNormal);
+    doc.text(`No. ${factura.numeroFactura}`, this.margen, y);
+    y = doc.y + 3;
+    doc.text(`Fecha: ${this.formatearFecha(factura.fechaEmision)}`, this.margen, y);
+    y = doc.y + 3;
+    doc.text(`Meses Incluidos: ${factura.facturasConsolidadas.length}`, this.margen, y);
+
+    y = doc.y + 10;
+    doc.moveTo(this.margen, y).lineTo(this.anchoTicket - this.margen, y).stroke();
+    y += 12;
+
+    // DATOS DEL CLIENTE
+    doc.fontSize(this.tamanoFuenteNormal).text('DATOS DEL CLIENTE', this.margen, y);
+    y = doc.y + 5;
+    doc.text(`Cliente: ${cliente.nombres} ${cliente.apellidos}`, this.margen, y);
+    y = doc.y + 3;
+    doc.text(`DPI: ${cliente.dpi}`, this.margen, y);
+    y = doc.y + 3;
+    doc.text(`Contador: ${cliente.contador}`, this.margen, y);
+    y = doc.y + 3;
+    doc.text(`Lote: ${cliente.lote}`, this.margen, y);
+    y = doc.y + 3;
+    doc.text(`Proyecto: ${this.formatearNombreProyecto(cliente.proyecto)}`, this.margen, y);
+
+    y = doc.y + 10;
+
+    // VERIFICAR SI TIENE FACTURAS CONSOLIDADAS PARA MOSTRAR DESGLOSE
+    if (factura.facturasConsolidadas && factura.facturasConsolidadas.length > 0) {
+      // ═══════════════════════════════════════════════
+      // MOSTRAR DESGLOSE POR MES
+      // ═══════════════════════════════════════════════
+
+      doc.fontSize(this.tamanoFuenteNormal).text('DETALLE POR MES', this.margen, y);
+      y = doc.y + 8;
+
+      doc.fontSize(this.tamanoFuentePequeno);
+
+      // Agrupar facturas por mes (para combinar si hay varias del mismo mes)
+      const facturasPorMes = {};
+
+      for (const detalle of factura.facturasConsolidadas) {
+        const mesKey = detalle.mesNombre;
+
+        if (!facturasPorMes[mesKey]) {
+          facturasPorMes[mesKey] = {
+            mesNombre: detalle.mesNombre,
+            year: new Date(detalle.periodo.inicio).getFullYear(),
+            montoOriginal: 0,
+            montoMora: 0,
+            subtotal: 0,
+            facturas: []
+          };
+        }
+
+        facturasPorMes[mesKey].montoOriginal += detalle.montoOriginal;
+        facturasPorMes[mesKey].montoMora += detalle.montoMora || 0;
+        facturasPorMes[mesKey].subtotal += detalle.subtotal;
+        facturasPorMes[mesKey].facturas.push(detalle.numeroFactura);
+      }
+
+      // Ordenar por mes (Enero, Febrero, Marzo, etc.)
+      const mesesOrden = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+      const mesesOrdenados = Object.values(facturasPorMes).sort((a, b) => {
+        return mesesOrden.indexOf(a.mesNombre) - mesesOrden.indexOf(b.mesNombre);
+      });
+
+      // Mostrar cada mes con formato mejorado
+      for (const mes of mesesOrdenados) {
+        doc.fontSize(this.tamanoFuenteNormal);
+        doc.text(`${mes.mesNombre} ${mes.year}`, this.margen, y);
+        y = doc.y + 4;
+
+        doc.fontSize(this.tamanoFuentePequeno);
+        this.imprimirLineaConValor(doc, '  Consumo:', `Q ${this.formatearMonto(mes.montoOriginal)}`, y);
+        y = doc.y + 3;
+
+        this.imprimirLineaConValor(doc, '  Mora (7%):', `Q ${this.formatearMonto(mes.montoMora)}`, y);
+        y = doc.y + 3;
+
+        this.imprimirLineaConValor(doc, '  Subtotal:', `Q ${this.formatearMonto(mes.subtotal)}`, y);
+        y = doc.y + 7;
+      }
+
+      y += 3;
+
+      // Línea separadora
+      doc.moveTo(this.margen, y).lineTo(this.anchoTicket - this.margen, y).stroke();
+      y += 10;
+
+      // RESUMEN DE TOTALES
+      doc.fontSize(this.tamanoFuenteNormal).text('RESUMEN DE PAGO', this.margen, y);
+      y = doc.y + 5;
+
+      this.imprimirLineaConValor(doc, 'Total Consumo + Mora:', `Q ${this.formatearMonto(factura.montoBase + factura.montoMora)}`, y);
+      y = doc.y + 3;
+
+      this.imprimirLineaConValor(doc, 'Costo Reconexión:', `Q ${this.formatearMonto(factura.costoReconexion)}`, y);
+      y = doc.y + 5;
+
+      // Línea doble
+      doc.moveTo(this.margen, y).lineTo(this.anchoTicket - this.margen, y).stroke();
+      doc.moveTo(this.margen, y + 2).lineTo(this.anchoTicket - this.margen, y + 2).stroke();
+      y += 10;
+
+      // TOTAL GENERAL
+      doc.fontSize(this.tamanoFuenteGrande);
+      this.imprimirLineaConValor(doc, 'TOTAL PAGADO:', `Q ${this.formatearMonto(factura.montoTotal)}`, y);
+
+      y = doc.y + 12;
+
+    } else {
+      // ═══════════════════════════════════════════════
+      // MOSTRAR DETALLE SIMPLE (sin desglose por mes)
+      // ═══════════════════════════════════════════════
+
+      doc.fontSize(this.tamanoFuenteNormal).text('DETALLE DEL PAGO', this.margen, y);
+      y = doc.y + 8;
+
+      doc.fontSize(this.tamanoFuentePequeno);
+
+      this.imprimirLineaConValor(doc, 'Subtotal Factura:', `Q ${this.formatearMonto(factura.montoBase)}`, y);
+      y = doc.y + 3;
+
+      this.imprimirLineaConValor(doc, 'Mora:', `Q ${this.formatearMonto(factura.montoMora)}`, y);
+      y = doc.y + 3;
+
+      this.imprimirLineaConValor(doc, 'Reconexión:', `Q ${this.formatearMonto(factura.costoReconexion)}`, y);
+      y = doc.y + 5;
+
+      // Línea doble
+      doc.moveTo(this.margen, y).lineTo(this.anchoTicket - this.margen, y).stroke();
+      doc.moveTo(this.margen, y + 2).lineTo(this.anchoTicket - this.margen, y + 2).stroke();
+      y += 10;
+
+      // TOTAL GENERAL
+      doc.fontSize(this.tamanoFuenteGrande);
+      this.imprimirLineaConValor(doc, 'TOTAL PAGADO:', `Q ${this.formatearMonto(factura.montoTotal)}`, y);
+
+      y = doc.y + 12;
+    }
+
+    // MÉTODO DE PAGO
+    doc.fontSize(this.tamanoFuenteNormal).text('MÉTODO DE PAGO', this.margen, y);
+    y = doc.y + 5;
+
+    const metodoPago = this.capitalizarPrimeraLetra(factura.metodoPago);
+    doc.text(`Método: ${metodoPago}`, this.margen, y);
+    y = doc.y + 10;
+
+    // CÓDIGO QR
+    doc.fontSize(this.tamanoFuentePequeno)
+       .text('CÓDIGO DE VERIFICACIÓN', this.margen, y, {
+         width: this.anchoContenido,
+         align: 'center'
+       });
+
+    y = doc.y + 5;
+
+    const tamanoQR = 84.92;
+    const xQR = (this.anchoTicket - tamanoQR) / 2;
+
+    doc.image(bufferQR, xQR, y, {
+      width: tamanoQR,
+      height: tamanoQR
+    });
+
+    y += tamanoQR + 10;
+
+    // FOOTER
+    doc.moveTo(this.margen, y).lineTo(this.anchoTicket - this.margen, y).stroke();
+    y += 10;
+
+    doc.fontSize(this.tamanoFuenteNormal)
+       .text('Gracias por su pago', this.margen, y, {
+         width: this.anchoContenido,
+         align: 'center'
+       });
+
+    y = doc.y + 3;
+
+    doc.fontSize(this.tamanoFuentePequeno)
+       .text('Servicio de agua restaurado', this.margen, y, {
+         width: this.anchoContenido,
+         align: 'center'
+       });
+
+    y = doc.y + 5;
+
+    const fechaHora = this.formatearFechaHora(new Date());
+    doc.text(`Fecha de impresión: ${fechaHora}`, this.margen, y, {
+      width: this.anchoContenido,
+      align: 'center'
+    });
+
+    y = doc.y + 3;
+
+    doc.text('Sistema de Agua LOTI v2.0', this.margen, y, {
+      width: this.anchoContenido,
+      align: 'center'
+    });
+  }
 }
 
 module.exports = new TicketPagoService();

@@ -147,7 +147,7 @@ class ReconexionService {
   }
 
   /**
-   * Procesa el pago de reconexión
+   * Procesa el pago de reconexión CREANDO UNA FACTURA CONSOLIDADA
    * NOTA: No se usan transacciones para compatibilidad con MongoDB standalone
    */
   async procesarReconexion(clienteId, opcion, datosPago) {
@@ -170,12 +170,35 @@ class ReconexionService {
         );
       }
 
-      // Marcar facturas como pagadas y crear registros de pago
-      const resultadoPagos = await this.aplicarPagosFacturas(
+      // Obtener todas las facturas pendientes
+      const facturasPendientes = await Factura.find({
         clienteId,
+        estado: { $in: ['pendiente', 'vencida'] }
+      }).sort({ fechaEmision: 1 });
+
+      if (facturasPendientes.length === 0) {
+        throw new Error('No hay facturas pendientes para este cliente');
+      }
+
+      console.log(`📋 Procesando reconexión para ${facturasPendientes.length} factura(s)...`);
+
+      // ✅ CREAR FACTURA CONSOLIDADA DE RECONEXIÓN
+      const facturaConsolidada = await this.crearFacturaConsolidada(
+        clienteId,
+        facturasPendientes,
         opcionSeleccionada,
         datosPago
       );
+
+      console.log(`✅ Factura consolidada creada: ${facturaConsolidada.numeroFactura}`);
+
+      // ✅ MARCAR FACTURAS ORIGINALES COMO CONSOLIDADAS
+      await this.marcarFacturasComoConsolidadas(
+        facturasPendientes,
+        facturaConsolidada._id
+      );
+
+      console.log(`✅ ${facturasPendientes.length} factura(s) marcadas como consolidadas`);
 
       // Actualizar estado del cliente
       await Cliente.findByIdAndUpdate(
@@ -195,42 +218,39 @@ class ReconexionService {
         montoDeuda: opcionSeleccionada.montoDeuda,
         costoReconexion: opcionSeleccionada.costoReconexion,
         saldoPendiente: opcionSeleccionada.saldoPendiente,
-        facturasPagadas: resultadoPagos.facturasPagadas.map(f => f._id),
+        facturaConsolidadaId: facturaConsolidada._id,
+        facturasOriginales: facturasPendientes.map(f => f._id),
+        facturasPagadas: [facturaConsolidada._id], // Ahora solo la consolidada
         metodoPago: datosPago.metodoPago,
         referencia: datosPago.referencia,
         procesadoPor: datosPago.usuarioId,
         fechaReconexion: new Date()
       });
 
-      // Generar UN SOLO ticket consolidado con todas las facturas
+      // Generar ticket usando el método existente de ticket consolidado
       let ticketConsolidado = null;
       try {
-        const pagosIds = resultadoPagos.pagosCreados.map(p => p._id);
-        const ticketResultado = await ticketPagoService.generarTicketReconexionConsolidado(
-          pagosIds,
-          {
-            reconexionId: reconexion._id,
-            tipoOpcion: opcion,
-            clienteId: clienteId
-          }
+        const ticketResultado = await ticketPagoService.generarTicketFacturaConsolidada(
+          facturaConsolidada._id
         );
 
         if (ticketResultado.exitoso) {
-          console.log(`✅ Ticket consolidado de reconexión generado:`, ticketResultado.nombreArchivo);
-          console.log(`   - Incluye ${resultadoPagos.pagosCreados.length} factura(s) pagada(s)`);
+          console.log(`✅ Ticket de factura consolidada generado:`, ticketResultado.nombreArchivo);
+          console.log(`   - Factura: ${facturaConsolidada.numeroFactura}`);
+          console.log(`   - Incluye ${facturasPendientes.length} mes(es)`);
           console.log(`   - Ruta: ${ticketResultado.rutaArchivo}`);
 
           ticketConsolidado = {
             nombreArchivo: ticketResultado.nombreArchivo,
             rutaArchivo: ticketResultado.rutaArchivo,
-            facturas: resultadoPagos.facturasPagadas.map(f => f.numeroFactura),
-            pagos: resultadoPagos.pagosCreados.map(p => p.numeroPago)
+            facturaConsolidada: facturaConsolidada.numeroFactura,
+            facturasOriginales: facturasPendientes.map(f => f.numeroFactura)
           };
         } else {
-          console.warn(`⚠️ No se pudo generar ticket consolidado:`, ticketResultado.mensaje);
+          console.warn(`⚠️ No se pudo generar ticket:`, ticketResultado.mensaje);
         }
       } catch (ticketError) {
-        console.error(`❌ Error al generar ticket consolidado:`, ticketError);
+        console.error(`❌ Error al generar ticket:`, ticketError);
         // No fallar la reconexión si falla la generación del ticket
       }
 
@@ -238,8 +258,9 @@ class ReconexionService {
         exitoso: true,
         mensaje: 'Reconexión procesada exitosamente',
         reconexionId: reconexion._id,
-        facturasPagadas: resultadoPagos.facturasPagadas.length,
-        pagosGenerados: resultadoPagos.pagosCreados.length,
+        facturaConsolidada: facturaConsolidada.numeroFactura,
+        facturaConsolidadaId: facturaConsolidada._id,
+        facturasOriginales: facturasPendientes.length,
         ticketConsolidado: ticketConsolidado,
         saldoPendiente: opcionSeleccionada.saldoPendiente,
         fechaReconexion: new Date()
@@ -252,83 +273,124 @@ class ReconexionService {
   }
 
   /**
-   * Aplica los pagos a las facturas correspondientes y crea registros de pago
+   * Crea una factura consolidada de reconexión
    */
-  async aplicarPagosFacturas(clienteId, opcionSeleccionada, datosPago) {
-    const facturasPagadas = [];
-    const pagosCreados = [];
-    const facturasPendientes = await Factura.find({
-      clienteId,
-      estado: { $in: ['pendiente', 'vencida'] }
-    }).sort({ fechaEmision: 1 });
-
-    let montoDisponible = opcionSeleccionada.montoDeuda;
-    const costoReconexionPorFactura = opcionSeleccionada.costoReconexion / facturasPendientes.length;
+  async crearFacturaConsolidada(clienteId, facturasPendientes, opcionSeleccionada, datosPago) {
+    // Preparar detalles de cada factura
+    const detallesFacturas = [];
+    let totalConsumo = 0;
+    let totalMora = 0;
 
     for (const factura of facturasPendientes) {
       const mora = moraService.calcularMoraFactura(factura);
-      const totalFactura = mora.totalConMora;
 
-      if (montoDisponible >= totalFactura) {
-        // Pagar factura completa
-        factura.estado = 'pagada';
-        factura.fechaPago = new Date();
-        factura.metodoPago = datosPago.metodoPago;
-        factura.montoMora = mora.montoMora;
-        factura.diasMora = mora.diasMora;
-        factura.requiereReconexion = true;
-        factura.costoReconexion = costoReconexionPorFactura;
-        await factura.save();
+      detallesFacturas.push({
+        facturaId: factura._id,
+        numeroFactura: factura.numeroFactura,
+        mesNombre: factura.obtenerNombreMes(),
+        periodo: {
+          inicio: factura.periodoInicio,
+          fin: factura.periodoFin
+        },
+        montoOriginal: factura.montoTotal,
+        montoMora: mora.montoMora,
+        diasMora: mora.diasMora,
+        subtotal: mora.totalConMora
+      });
 
-        // Crear registro de pago
-        const numeroPago = await Pago.generarNumeroPago();
-        const pago = await Pago.create({
-          numeroPago,
-          facturaId: factura._id,
-          clienteId: clienteId,
-          fechaPago: new Date(),
-          montoOriginal: factura.montoTotal,
-          montoMora: mora.montoMora,
-          montoReconexion: costoReconexionPorFactura,
-          montoPagado: totalFactura + costoReconexionPorFactura,
-          metodoPago: datosPago.metodoPago,
-          referenciaPago: datosPago.referencia,
-          observaciones: `Pago procesado vía reconexión. Opción: ${opcionSeleccionada.descripcion}`,
-          registradoPor: datosPago.usuarioId,
-          facturaSnapshot: {
-            numeroFactura: factura.numeroFactura,
-            fechaEmision: factura.fechaEmision,
-            fechaVencimiento: factura.fechaVencimiento,
-            diasMora: mora.diasMora,
-            periodoInicio: factura.periodoInicio,
-            periodoFin: factura.periodoFin,
-            requiereReconexion: true,
-            costoReconexion: costoReconexionPorFactura
-          }
-        });
-
-        facturasPagadas.push(factura);
-        pagosCreados.push(pago);
-        montoDisponible -= totalFactura;
-
-      } else if (montoDisponible > 0) {
-        // Pago parcial - solo actualizar observaciones
-        factura.observaciones = (factura.observaciones || '') +
-          `\nPago parcial de Q${montoDisponible.toFixed(2)} el ${new Date().toLocaleDateString()} vía reconexión`;
-        factura.montoMora = mora.montoMora;
-        factura.diasMora = mora.diasMora;
-        await factura.save();
-
-        montoDisponible = 0;
-      }
-
-      if (montoDisponible <= 0) break;
+      totalConsumo += factura.montoTotal;
+      totalMora += mora.montoMora;
     }
 
-    return {
-      facturasPagadas,
-      pagosCreados
-    };
+    // Generar número de factura consolidada
+    const numeroFacturaConsolidada = await Factura.generarNumeroFacturaReconexion();
+
+    // Crear la factura consolidada
+    const facturaConsolidada = await Factura.create({
+      numeroFactura: numeroFacturaConsolidada,
+      tipoFactura: 'reconexion',
+      clienteId: clienteId,
+
+      // Fechas
+      fechaEmision: new Date(),
+      fechaVencimiento: new Date(), // Vence hoy (ya se está pagando)
+
+      // Período (desde la primera hasta la última factura)
+      periodoInicio: facturasPendientes[0].periodoInicio,
+      periodoFin: facturasPendientes[facturasPendientes.length - 1].periodoFin,
+
+      // Datos de lectura (promedio o total)
+      lecturaAnterior: facturasPendientes[0].lecturaAnterior,
+      lecturaActual: facturasPendientes[facturasPendientes.length - 1].lecturaActual,
+      consumoLitros: facturasPendientes.reduce((sum, f) => sum + f.consumoLitros, 0),
+
+      // Montos
+      montoBase: totalConsumo,
+      montoMora: totalMora,
+      costoReconexion: opcionSeleccionada.costoReconexion,
+      tarifaBase: totalConsumo, // Usamos montoBase para mantener compatibilidad
+      montoTotal: totalConsumo + totalMora + opcionSeleccionada.costoReconexion,
+      subtotal: totalConsumo + totalMora,
+
+      // Detalles consolidados
+      facturasConsolidadas: detallesFacturas,
+
+      // Estado
+      estado: 'pagada', // Se marca como pagada inmediatamente
+      fechaPago: new Date(),
+      metodoPago: datosPago.metodoPago,
+
+      // Observaciones
+      observaciones: `Factura consolidada de reconexión. Incluye ${facturasPendientes.length} factura(s): ${facturasPendientes.map(f => f.numeroFactura).join(', ')}`,
+
+      // Usuario
+      creadoPor: datosPago.usuarioId
+    });
+
+    // Crear el pago único
+    const numeroPago = await Pago.generarNumeroPago();
+    await Pago.create({
+      numeroPago,
+      facturaId: facturaConsolidada._id,
+      clienteId: clienteId,
+      fechaPago: new Date(),
+      montoOriginal: totalConsumo,
+      montoMora: totalMora,
+      montoReconexion: opcionSeleccionada.costoReconexion,
+      montoPagado: facturaConsolidada.montoTotal,
+      metodoPago: datosPago.metodoPago,
+      referenciaPago: datosPago.referencia,
+      observaciones: `Pago de factura consolidada de reconexión: ${numeroFacturaConsolidada}. Incluye ${facturasPendientes.length} factura(s).`,
+      registradoPor: datosPago.usuarioId,
+      facturaSnapshot: {
+        numeroFactura: numeroFacturaConsolidada,
+        fechaEmision: facturaConsolidada.fechaEmision,
+        fechaVencimiento: facturaConsolidada.fechaVencimiento,
+        diasMora: 0,
+        periodoInicio: facturaConsolidada.periodoInicio,
+        periodoFin: facturaConsolidada.periodoFin,
+        requiereReconexion: true,
+        costoReconexion: opcionSeleccionada.costoReconexion
+      }
+    });
+
+    return facturaConsolidada;
+  }
+
+  /**
+   * Marca las facturas originales como consolidadas
+   */
+  async marcarFacturasComoConsolidadas(facturas, facturaConsolidadaId) {
+    for (const factura of facturas) {
+      factura.estadoConsolidacion = 'consolidada';
+      factura.facturaConsolidadaRef = facturaConsolidadaId;
+      factura.estado = 'pagada'; // También marcar como pagada
+      factura.fechaPago = new Date();
+      factura.observaciones = (factura.observaciones || '') +
+        `\n[CONSOLIDADA] Incluida en factura consolidada ${facturaConsolidadaId} el ${new Date().toLocaleDateString()}`;
+
+      await factura.save();
+    }
   }
 }
 

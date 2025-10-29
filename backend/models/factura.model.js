@@ -216,6 +216,53 @@ const facturaSchema = new mongoose.Schema({
     mesesCompletos: { type: Number, default: 0 },
     porcentajeMora: { type: Number, default: 0 },
     calculadoEn: { type: Date, default: null }
+  },
+
+  // ===== CAMPOS PARA FACTURAS CONSOLIDADAS =====
+
+  // Tipo de factura
+  tipoFactura: {
+    type: String,
+    enum: ['normal', 'reconexion'],
+    default: 'normal'
+  },
+
+  // Array de facturas consolidadas (solo para tipo 'reconexion')
+  facturasConsolidadas: [{
+    facturaId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Factura'
+    },
+    numeroFactura: String,
+    mesNombre: String,        // "Enero", "Febrero", etc.
+    periodo: {
+      inicio: Date,
+      fin: Date
+    },
+    montoOriginal: Number,
+    montoMora: Number,
+    diasMora: Number,
+    subtotal: Number          // Original + Mora
+  }],
+
+  // Monto base (solo para facturas consolidadas)
+  montoBase: {
+    type: Number,
+    default: 0
+  },
+
+  // Estado de consolidación (para facturas originales)
+  estadoConsolidacion: {
+    type: String,
+    enum: ['no_consolidada', 'consolidada'],
+    default: 'no_consolidada'
+  },
+
+  // Referencia a la factura consolidada que la incluye
+  facturaConsolidadaRef: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Factura',
+    default: null
   }
 
 }, {
@@ -365,9 +412,52 @@ facturaSchema.statics.obtenerFacturasVencidas = function() {
     .sort({ fechaVencimiento: 1 });
 };
 
+// Método estático para generar número de factura de reconexión
+facturaSchema.statics.generarNumeroFacturaReconexion = async function() {
+  const Contador = require('./contador.model');
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const contadorId = `FAC-RECON-${year}${month}`;
+
+  try {
+    const contador = await Contador.findOneAndUpdate(
+      { _id: contadorId },
+      { $inc: { secuencial: 1 } },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true
+      }
+    );
+
+    const sequential = contador.secuencial.toString().padStart(4, '0');
+    return `${contadorId}-${sequential}`;
+
+  } catch (error) {
+    console.error('Error al generar número de factura de reconexión:', error);
+    const timestamp = Date.now().toString().slice(-4);
+    const fallbackSequential = timestamp.padStart(4, '0');
+    return `${contadorId}-${fallbackSequential}`;
+  }
+};
+
+// Método de instancia para obtener nombre del mes
+facturaSchema.methods.obtenerNombreMes = function() {
+  const meses = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+  const mes = this.periodoInicio.getMonth();
+  return meses[mes];
+};
+
 // Índices adicionales para optimización
 facturaSchema.index({ fechaEmision: -1 });
 facturaSchema.index({ 'clienteId': 1, 'estado': 1 });
 facturaSchema.index({ 'estado': 1, 'fechaVencimiento': 1 });
+facturaSchema.index({ 'tipoFactura': 1 });
+facturaSchema.index({ 'estadoConsolidacion': 1 });
 
 module.exports = mongoose.model('Factura', facturaSchema);

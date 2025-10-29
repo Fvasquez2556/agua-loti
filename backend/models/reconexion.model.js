@@ -35,6 +35,20 @@ const reconexionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Factura'
   }],
+
+  // Referencia a la factura consolidada generada
+  facturaConsolidadaId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Factura',
+    default: null
+  },
+
+  // Referencias a las facturas originales que se consolidaron
+  facturasOriginales: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Factura'
+  }],
+
   metodoPago: {
     type: String,
     required: true
