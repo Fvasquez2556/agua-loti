@@ -26,3 +26,8 @@ logs
 # OS
 .DS_Store
 Thumbs.db
+
+# Documentación local (no subir a GitHub)
+Documentacion/
+PREPARACION_FEL_COMPLETADA.md
+RESULTADOS_PRUEBAS.md
