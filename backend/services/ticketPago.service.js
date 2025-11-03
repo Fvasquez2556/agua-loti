@@ -55,7 +55,7 @@ class TicketPagoService {
       // 1. Obtener datos del pago con todas las relaciones pobladas
       const pago = await Pago.findById(pagoId)
         .populate('clienteId', 'nombres apellidos dpi contador lote proyecto')
-        .populate('facturaId', 'numeroFactura fechaEmision fechaVencimiento periodoInicio periodoFin');
+        .populate('facturaId');  // Poblar TODA la factura para verificar el tipo
 
       if (!pago) {
         return {
@@ -76,18 +76,28 @@ class TicketPagoService {
         };
       }
 
-      // 3. Preparar el directorio de almacenamiento
+      // 3. VERIFICAR SI ES UNA FACTURA DE RECONEXIÓN
+      // Si es de reconexión, usar el método especializado que muestra desglose por mes
+      if (pago.facturaId.tipoFactura === 'reconexion') {
+        console.log(`🔄 Detectada factura de reconexión: ${pago.facturaId.numeroFactura}`);
+        console.log(`   Redirigiendo a generarTicketFacturaConsolidada()...`);
+
+        // Delegar al método especializado para facturas consolidadas
+        return await this.generarTicketFacturaConsolidada(pago.facturaId._id);
+      }
+
+      // 4. Preparar el directorio de almacenamiento (para pagos normales)
       const fechaPago = new Date(pago.fechaPago);
       const anio = fechaPago.getFullYear();
       const mes = String(fechaPago.getMonth() + 1).padStart(2, '0');
       const directorioTickets = this.asegurarDirectorioTickets(anio, mes);
 
-      // 4. Generar nombre de archivo
+      // 5. Generar nombre de archivo
       const fechaFormateada = `${anio}${mes}${String(fechaPago.getDate()).padStart(2, '0')}`;
       const nombreArchivo = `PAGO-${pago.numeroPago}-${fechaFormateada}.pdf`;
       const rutaCompleta = path.join(directorioTickets, nombreArchivo);
 
-      // 5. Generar código QR
+      // 6. Generar código QR
       const datosQR = {
         numeroPago: pago.numeroPago,
         fecha: pago.fechaPago.toISOString(),
@@ -100,7 +110,7 @@ class TicketPagoService {
       };
       const bufferQR = await this.generarCodigoQR(datosQR);
 
-      // 6. Crear el documento PDF
+      // 7. Crear el documento PDF
       const doc = new PDFDocument({
         size: [this.anchoTicket, 841.89], // Ancho fijo, alto variable
         margins: {
@@ -111,17 +121,17 @@ class TicketPagoService {
         }
       });
 
-      // 7. Crear stream de escritura
+      // 8. Crear stream de escritura
       const stream = fs.createWriteStream(rutaCompleta);
       doc.pipe(stream);
 
-      // 8. Generar contenido del ticket
+      // 9. Generar contenido del ticket
       await this.generarContenidoTicket(doc, pago, bufferQR);
 
-      // 9. Finalizar documento
+      // 10. Finalizar documento
       doc.end();
 
-      // 10. Esperar a que se complete la escritura
+      // 11. Esperar a que se complete la escritura
       await new Promise((resolve, reject) => {
         stream.on('finish', resolve);
         stream.on('error', reject);
@@ -981,7 +991,15 @@ class TicketPagoService {
     y = doc.y + 3;
     doc.text(`Fecha: ${this.formatearFecha(factura.fechaEmision)}`, this.margen, y);
     y = doc.y + 3;
-    doc.text(`Meses Incluidos: ${factura.facturasConsolidadas.length}`, this.margen, y);
+
+    // Contar meses únicos (agrupando por mes-año)
+    const mesesUnicos = new Set();
+    factura.facturasConsolidadas.forEach(detalle => {
+      const year = new Date(detalle.periodo.inicio).getFullYear();
+      mesesUnicos.add(`${detalle.mesNombre}-${year}`);
+    });
+
+    doc.text(`Meses Incluidos: ${mesesUnicos.size}`, this.margen, y);
 
     y = doc.y + 10;
     doc.moveTo(this.margen, y).lineTo(this.anchoTicket - this.margen, y).stroke();
@@ -1017,12 +1035,13 @@ class TicketPagoService {
       const facturasPorMes = {};
 
       for (const detalle of factura.facturasConsolidadas) {
-        const mesKey = detalle.mesNombre;
+        const year = new Date(detalle.periodo.inicio).getFullYear();
+        const mesKeyConYear = `${detalle.mesNombre}-${year}`;  // Clave única: "Mayo-2025"
 
-        if (!facturasPorMes[mesKey]) {
-          facturasPorMes[mesKey] = {
+        if (!facturasPorMes[mesKeyConYear]) {
+          facturasPorMes[mesKeyConYear] = {
             mesNombre: detalle.mesNombre,
-            year: new Date(detalle.periodo.inicio).getFullYear(),
+            year: year,
             montoOriginal: 0,
             montoMora: 0,
             subtotal: 0,
@@ -1030,16 +1049,21 @@ class TicketPagoService {
           };
         }
 
-        facturasPorMes[mesKey].montoOriginal += detalle.montoOriginal;
-        facturasPorMes[mesKey].montoMora += detalle.montoMora || 0;
-        facturasPorMes[mesKey].subtotal += detalle.subtotal;
-        facturasPorMes[mesKey].facturas.push(detalle.numeroFactura);
+        facturasPorMes[mesKeyConYear].montoOriginal += detalle.montoOriginal;
+        facturasPorMes[mesKeyConYear].montoMora += detalle.montoMora || 0;
+        facturasPorMes[mesKeyConYear].subtotal += detalle.subtotal;
+        facturasPorMes[mesKeyConYear].facturas.push(detalle.numeroFactura);
       }
 
-      // Ordenar por mes (Enero, Febrero, Marzo, etc.)
+      // Ordenar por año y luego por mes
       const mesesOrden = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                           'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
       const mesesOrdenados = Object.values(facturasPorMes).sort((a, b) => {
+        // Primero ordenar por año
+        if (a.year !== b.year) {
+          return a.year - b.year;
+        }
+        // Luego ordenar por mes
         return mesesOrden.indexOf(a.mesNombre) - mesesOrden.indexOf(b.mesNombre);
       });
 

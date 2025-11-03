@@ -768,6 +768,11 @@ async function confirmPaymentRegistration() {
             // Actualizar datos
             await refreshData();
 
+            // Actualizar estadísticas del dashboard en tiempo real
+            if (typeof window.refreshDashboardStats === 'function') {
+                window.refreshDashboardStats();
+            }
+
         } else {
             throw new Error(data.message);
         }
@@ -1181,10 +1186,37 @@ async function initializeApp() {
         
         console.log('✅ Sistema de pagos inicializado correctamente');
         showMessage('Sistema de pagos cargado correctamente', 'success');
-        
+
+        // Verificar si mostrar botón de gestión de facturas
+        await checkManageInvoicesButton();
+
     } catch (error) {
         console.error('❌ Error al inicializar la aplicación:', error);
         showMessage('Error al inicializar el sistema de pagos', 'error');
+    }
+}
+
+/**
+ * Verificar si mostrar el botón de gestión de facturas
+ */
+async function checkManageInvoicesButton() {
+    try {
+        const response = await apiRequest(`${API_BASE_URL}/facturas/admin/status`);
+        const data = await response.json();
+
+        const btnManage = document.getElementById('btnManageInvoices');
+
+        if (data.success && data.data.enabled) {
+            // Mostrar el botón si ENABLE_ADMIN_FUNCTIONS está activo
+            btnManage.classList.remove('hidden');
+        } else {
+            // Ocultar el botón
+            btnManage.classList.add('hidden');
+        }
+    } catch (error) {
+        console.error('Error al verificar estado admin:', error);
+        // En caso de error, ocultar el botón por seguridad
+        document.getElementById('btnManageInvoices').classList.add('hidden');
     }
 }
 

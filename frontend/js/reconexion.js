@@ -350,8 +350,25 @@ class ReconexionManager {
                 throw new Error(data.message || 'Error al procesar reconexión');
             }
 
+            // Descargar ticket automáticamente
+            if (data.data.pagoId) {
+                console.log('📄 Descargando ticket automáticamente...');
+                try {
+                    await this.descargarTicketPago(data.data.pagoId);
+                    console.log('✅ Ticket descargado exitosamente');
+                } catch (ticketError) {
+                    console.error('⚠️ Error al descargar ticket:', ticketError);
+                    this.showMessage('Pago registrado exitosamente. El ticket se puede descargar desde el módulo de Pagos.', 'warning');
+                }
+            }
+
             // Mostrar confirmación
             this.mostrarConfirmacion(data.data);
+
+            // Actualizar estadísticas del dashboard en tiempo real
+            if (typeof window.refreshDashboardStats === 'function') {
+                window.refreshDashboardStats();
+            }
 
         } catch (error) {
             console.error('Error:', error);
@@ -467,6 +484,71 @@ class ReconexionManager {
             month: '2-digit',
             day: '2-digit'
         });
+    }
+
+    /**
+     * Descargar ticket de pago en PDF
+     * @param {string} pagoId - ID del pago
+     */
+    async descargarTicketPago(pagoId) {
+        try {
+            const response = await AuthUtils.authenticatedFetch(
+                `${this.API_BASE}/pagos/${pagoId}/ticket`,
+                {
+                    method: 'GET'
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Error al descargar ticket');
+            }
+
+            // Obtener el blob del PDF
+            const blob = await response.blob();
+
+            // Obtener el nombre del archivo desde el header Content-Disposition
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = 'ticket-reconexion.pdf';
+
+            if (contentDisposition) {
+                // Extraer nombre del archivo
+                const utf8Match = contentDisposition.match(/filename\*=UTF-8''(.+)/i);
+                const quotedMatch = contentDisposition.match(/filename="(.+?)"/i);
+                const unquotedMatch = contentDisposition.match(/filename=([^;]+)/i);
+
+                if (utf8Match && utf8Match[1]) {
+                    filename = decodeURIComponent(utf8Match[1]);
+                } else if (quotedMatch && quotedMatch[1]) {
+                    filename = quotedMatch[1];
+                } else if (unquotedMatch && unquotedMatch[1]) {
+                    filename = unquotedMatch[1].trim();
+                }
+
+                // Limpiar caracteres no deseados
+                filename = filename.replace(/['"]/g, '').trim();
+                if (!filename.endsWith('.pdf')) {
+                    filename = filename.replace(/\.pdf_?$/, '') + '.pdf';
+                }
+            }
+
+            // Crear URL temporal y descargar
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+
+            // Limpiar
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            return true;
+        } catch (error) {
+            console.error('Error al descargar ticket:', error);
+            throw error;
+        }
     }
 }
 

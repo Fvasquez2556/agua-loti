@@ -11,7 +11,12 @@
     <div class="container">
         <header class="header">
             <h1>💰 Sistema de Control de Pagos</h1>
-            <a href="mainPage.html" class="back-btn">← Volver al Inicio</a>
+            <div class="header-buttons">
+                <button type="button" id="btnManageInvoices" class="btn-manage-invoices hidden" onclick="openManageInvoicesModal()">
+                    🗑️ Gestionar Facturas
+                </button>
+                <a href="mainPage.html" class="back-btn">← Volver al Inicio</a>
+            </div>
         </header>
 
         <main class="main-content">
@@ -370,9 +375,162 @@
         </div>
     </div>
 
+    <!-- ========================================= -->
+    <!-- MODAL: GESTIONAR FACTURAS DEL CLIENTE -->
+    <!-- ========================================= -->
+    <div id="manageInvoicesModal" class="modal">
+        <div class="modal-content modal-xlarge">
+            <div class="modal-header">
+                <h3>🗑️ Gestionar Facturas del Cliente</h3>
+                <span class="close-modal" onclick="closeManageInvoicesModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Búsqueda de Cliente -->
+                <div class="manage-search-section">
+                    <label for="manageClientSearch">Buscar Cliente:</label>
+                    <input
+                        type="text"
+                        id="manageClientSearch"
+                        class="search-box"
+                        placeholder="🔍 Buscar por nombre, DPI, No. de factura, contador..."
+                        oninput="searchClientForManage()"
+                    >
+                </div>
+
+                <!-- Resultados de Búsqueda -->
+                <div id="manageSearchResults" class="manage-search-results hidden">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+
+                <!-- Información del Cliente Seleccionado -->
+                <div id="manageClientInfo" class="manage-client-info hidden">
+                    <h4>Cliente Seleccionado:</h4>
+                    <div id="manageClientDetails"></div>
+                </div>
+
+                <!-- Tabla de Facturas -->
+                <div id="manageInvoicesTable" class="manage-invoices-table hidden">
+                    <h4>Facturas del Cliente:</h4>
+                    <div class="table-actions">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="selectAllInvoices" onchange="toggleSelectAll()">
+                            <span>Seleccionar Todas</span>
+                        </label>
+                        <span id="selectedCount" class="selected-count">0 seleccionadas</span>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="invoicesTable">
+                            <thead>
+                                <tr>
+                                    <th class="checkbox-column"></th>
+                                    <th>No. Factura</th>
+                                    <th>Fecha Emisión</th>
+                                    <th>Fecha Vencimiento</th>
+                                    <th>Estado</th>
+                                    <th>Monto</th>
+                                    <th>Mora</th>
+                                    <th>Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoicesTableBody">
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="manage-actions">
+                        <button
+                            type="button"
+                            id="btnDeleteSelected"
+                            class="btn-danger"
+                            onclick="confirmDeleteInvoices()"
+                            disabled
+                        >
+                            🗑️ Eliminar Seleccionadas (<span id="deleteCount">0</span>)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mensaje cuando no hay resultados -->
+                <div id="manageNoResults" class="manage-no-results hidden">
+                    <p>🔍 Busca un cliente para gestionar sus facturas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN (1ra) -->
+    <!-- ========================================= -->
+    <div id="deleteConfirmModal1" class="modal">
+        <div class="modal-content">
+            <div class="modal-header modal-header-warning">
+                <h3>⚠️ Confirmar Eliminación</h3>
+                <span class="close-modal" onclick="closeDeleteConfirmModal1()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="warning-box">
+                    <p><strong>¿Está seguro que desea eliminar las facturas seleccionadas?</strong></p>
+                    <div id="deleteConfirmDetails"></div>
+                    <p class="warning-text">Esta acción no se puede deshacer.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeDeleteConfirmModal1()">Cancelar</button>
+                <button type="button" class="btn-danger" onclick="showDeleteConfirmModal2()">Sí, continuar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================= -->
+    <!-- MODAL: CONFIRMACIÓN DE ELIMINACIÓN (2da) -->
+    <!-- ========================================= -->
+    <div id="deleteConfirmModal2" class="modal">
+        <div class="modal-content">
+            <div class="modal-header modal-header-danger">
+                <h3>🔐 Confirmación Final</h3>
+                <span class="close-modal" onclick="closeDeleteConfirmModal2()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="danger-box">
+                    <p><strong>CONFIRMACIÓN FINAL DE ELIMINACIÓN</strong></p>
+                    <p>Está a punto de eliminar permanentemente <strong><span id="finalDeleteCount">0</span> facturas</strong>.</p>
+
+                    <div class="form-group">
+                        <label for="deletePassword">Contraseña Administrativa *</label>
+                        <input
+                            type="password"
+                            id="deletePassword"
+                            placeholder="Ingrese la contraseña administrativa"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="deleteMotivo">Motivo de la Eliminación *</label>
+                        <textarea
+                            id="deleteMotivo"
+                            rows="3"
+                            placeholder="Ej: Facturas de prueba, datos erróneos, etc."
+                            required
+                        ></textarea>
+                    </div>
+
+                    <p class="danger-text">⚠️ Esta acción quedará registrada en el sistema de auditoría.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeDeleteConfirmModal2()">Cancelar</button>
+                <button type="button" class="btn-danger" onclick="executeDeleteInvoices()">✅ Confirmar Eliminación</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="../js/auth.js"></script>
     <script src="../js/pageProtection.js"></script>
     <script src="../js/pagos.js"></script>
+    <script src="../js/factura.admin.js"></script>
 </body>
 </html>

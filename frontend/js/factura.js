@@ -722,17 +722,22 @@ async function confirmGenerateInvoice() {
         
         if (result.success) {
             showMessage('✅ Factura generada exitosamente', 'success');
-            
+
             // Actualizar vista previa con datos reales
             const factura = result.data;
             document.getElementById('preview-factura').textContent = factura.numeroFactura;
-            
+
             // Mostrar botones de impresión
             showElement('printSection');
-            
+
             // Recargar historial de facturas
             await loadClientInvoiceHistory(currentClientData._id);
-            
+
+            // Actualizar estadísticas del dashboard en tiempo real
+            if (typeof window.refreshDashboardStats === 'function') {
+                window.refreshDashboardStats();
+            }
+
         } else {
             throw new Error(result.message || 'Error desconocido al generar factura');
         }

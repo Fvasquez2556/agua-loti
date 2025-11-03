@@ -175,6 +175,20 @@ router.post(
 );
 
 /**
+ * @route   DELETE /api/facturas/admin/eliminar-selectivas
+ * @desc    Eliminar facturas selectivas de un cliente con registro de auditoría
+ * @access  Privado (requiere contraseña administrativa)
+ * @security Requiere contraseña adicional + Solo admin
+ * @body    { clienteId, facturasIds: [], password, motivo }
+ */
+router.delete(
+  '/eliminar-selectivas',
+  authMiddleware,
+  requireRole('admin'),
+  facturaAdminController.eliminarFacturasSelectivas
+);
+
+/**
  * @route   GET /api/facturas/admin/status
  * @desc    Verificar si las funciones admin están habilitadas
  * @access  Privado (requiere autenticación)
@@ -183,16 +197,35 @@ router.get(
   '/status',
   authMiddleware,
   requireRole('admin'),
-  (req, res) => {
-    res.json({
-      success: true,
-      data: {
-        enabled: ADMIN_FUNCTIONS_ENABLED,
-        environment: process.env.NODE_ENV,
-        warning: IS_PRODUCTION ? 'Funciones admin activas en PRODUCCIÓN - Deshabilitar después de usar' : null
-      }
-    });
-  }
+  facturaAdminController.verificarEstadoAdmin
+);
+
+/**
+ * @route   DELETE /api/facturas/admin/eliminar-pagos-selectivos
+ * @desc    Eliminar pagos selectivos de un cliente específico
+ * @access  Privado (requiere contraseña administrativa)
+ * @security Requiere contraseña adicional + Solo admin
+ * @body    { clienteId, pagosIds: [], password, motivo }
+ */
+router.delete(
+  '/eliminar-pagos-selectivos',
+  authMiddleware,
+  requireRole('admin'),
+  facturaAdminController.eliminarPagosSelectivos
+);
+
+/**
+ * @route   POST /api/facturas/admin/anular-factura-certificada
+ * @desc    Anular factura certificada por FEL creando Nota de Crédito
+ * @access  Privado (requiere contraseña administrativa)
+ * @security Requiere contraseña adicional + Solo admin
+ * @body    { facturaId, password, motivo }
+ */
+router.post(
+  '/anular-factura-certificada',
+  authMiddleware,
+  requireRole('admin'),
+  facturaAdminController.anularFacturaCertificada
 );
 
 module.exports = router;

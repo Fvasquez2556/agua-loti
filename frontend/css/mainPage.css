@@ -145,7 +145,7 @@
         }
 
         .main-content {
-            padding: 40px;
+            padding: clamp(15px, 3vw, 30px);
             flex: 1;
             /* Permitir scroll solo en el contenido principal si es necesario */
             overflow-y: auto;
@@ -153,40 +153,40 @@
 
         .welcome-section {
             text-align: center;
-            margin-bottom: 50px;
+            margin-bottom: clamp(15px, 3vw, 30px);
         }
 
         .welcome-section h2 {
             color: #333;
-            font-size: 2rem;
-            margin-bottom: 15px;
+            font-size: clamp(1.3rem, 3vw, 1.8rem);
+            margin-bottom: 10px;
         }
 
         .welcome-section p {
             color: #666;
-            font-size: 1.1rem;
+            font-size: clamp(0.9rem, 2vw, 1rem);
             max-width: 600px;
             margin: 0 auto;
-            line-height: 1.6;
+            line-height: 1.4;
         }
 
         .modules-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: clamp(15px, 3vw, 30px);
-            margin-bottom: 40px;
-        } 
+            grid-template-columns: repeat(3, 1fr);
+            gap: clamp(10px, 2vw, 20px);
+            margin-bottom: clamp(20px, 3vw, 30px);
+        }
 
         .module-card {
-            background: 
+            background:
                 radial-gradient(circle at 85% 15%, rgba(66, 180, 219, 0.05) 0%, transparent 25%),
                 radial-gradient(circle at 15% 85%, rgba(95, 185, 155, 0.04) 0%, transparent 25%),
                 white;
-            border-radius: 15px;
-            padding: clamp(20px, 4vw, 30px);
+            border-radius: 12px;
+            padding: clamp(15px, 2.5vw, 20px);
             text-align: center;
-            box-shadow: 
-                0 10px 30px rgba(0,0,0,0.1),
+            box-shadow:
+                0 8px 20px rgba(0,0,0,0.08),
                 0 0 0 1px rgba(95, 185, 155, 0.1);
             transition: all 0.3s ease;
             border: 2px solid transparent;
@@ -195,7 +195,7 @@
             color: inherit;
             position: relative;
             overflow: hidden;
-            min-height: 300px;
+            min-height: clamp(200px, 25vh, 240px);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -246,14 +246,14 @@
         }
 
         .module-icon {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 20px;
+            width: clamp(50px, 8vw, 65px);
+            height: clamp(50px, 8vw, 65px);
+            margin: 0 auto 12px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.5rem;
+            font-size: clamp(1.5rem, 3vw, 2rem);
             color: white;
             position: relative;
             z-index: 1;
@@ -284,20 +284,21 @@
         }
 
         .module-title {
-            font-size: 1.5rem;
+            font-size: clamp(1.1rem, 2.5vw, 1.3rem);
             font-weight: 600;
             color: #333;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
             position: relative;
             z-index: 1;
         }
 
         .module-description {
             color: #666;
-            line-height: 1.6;
-            margin-bottom: 20px;
+            line-height: 1.4;
+            margin-bottom: 12px;
             position: relative;
             z-index: 1;
+            font-size: clamp(0.8rem, 1.5vw, 0.9rem);
         }
 
         .module-features {
@@ -310,9 +311,10 @@
 
         .module-features li {
             color: #777;
-            margin-bottom: 8px;
-            padding-left: 20px;
+            margin-bottom: 5px;
+            padding-left: 18px;
             position: relative;
+            font-size: clamp(0.75rem, 1.5vw, 0.85rem);
         }
 
         .module-features li::before {
@@ -324,13 +326,13 @@
         }
 
         .stats-section {
-            margin-top: 50px;
-            padding: 30px;
-            background: 
+            margin-top: clamp(15px, 3vw, 30px);
+            padding: clamp(15px, 2.5vw, 25px);
+            background:
                 radial-gradient(circle at 20% 30%, rgba(95, 185, 155, 0.08) 0%, transparent 25%),
                 radial-gradient(circle at 80% 70%, rgba(66, 180, 219, 0.06) 0%, transparent 25%),
                 linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-radius: 15px;
+            border-radius: 12px;
             position: relative;
             overflow: hidden;
         }
@@ -353,64 +355,74 @@
         .stats-title {
             text-align: center;
             color: #333;
-            font-size: 1.8rem;
-            margin-bottom: 30px;
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            margin-bottom: clamp(12px, 2vw, 20px);
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: clamp(10px, 2vw, 15px);
         }
 
         .stat-card {
             background: white;
-            padding: 20px;
-            border-radius: 10px;
+            padding: clamp(12px, 2vw, 16px);
+            border-radius: 8px;
             text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             transition: transform 0.3s ease;
         }
 
         .stat-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
         }
 
         .stat-number {
-            font-size: 2rem;
+            font-size: clamp(1.3rem, 3vw, 1.8rem);
             font-weight: bold;
             color: #4facfe;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         .stat-label {
             color: #666;
-            font-size: 0.9rem;
+            font-size: clamp(0.75rem, 1.5vw, 0.85rem);
         }
 
         /* Responsive design mejorado */
+        @media (max-width: 1024px) {
+            .modules-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
         @media (max-width: 768px) {
             .container {
                 margin: 5px;
                 min-height: calc(100vh - 10px);
             }
-            
+
             .main-content {
-                padding: 20px;
+                padding: 15px;
             }
-            
+
             .modules-grid {
                 grid-template-columns: 1fr;
-                gap: 20px;
+                gap: 15px;
             }
-            
+
+            .module-card {
+                min-height: auto;
+            }
+
             .logout-btn {
                 position: static;
                 display: block;
                 margin: 10px auto 20px;
                 width: fit-content;
             }
-            
+
             .header {
                 padding: 20px;
             }

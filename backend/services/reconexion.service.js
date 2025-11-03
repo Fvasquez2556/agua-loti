@@ -182,8 +182,8 @@ class ReconexionService {
 
       console.log(`📋 Procesando reconexión para ${facturasPendientes.length} factura(s)...`);
 
-      // ✅ CREAR FACTURA CONSOLIDADA DE RECONEXIÓN
-      const facturaConsolidada = await this.crearFacturaConsolidada(
+      // ✅ CREAR FACTURA CONSOLIDADA DE RECONEXIÓN Y PAGO
+      const { facturaConsolidada, pago } = await this.crearFacturaConsolidada(
         clienteId,
         facturasPendientes,
         opcionSeleccionada,
@@ -191,6 +191,7 @@ class ReconexionService {
       );
 
       console.log(`✅ Factura consolidada creada: ${facturaConsolidada.numeroFactura}`);
+      console.log(`✅ Pago registrado: ${pago.numeroPago} (ID: ${pago._id})`);
 
       // ✅ MARCAR FACTURAS ORIGINALES COMO CONSOLIDADAS
       await this.marcarFacturasComoConsolidadas(
@@ -227,32 +228,10 @@ class ReconexionService {
         fechaReconexion: new Date()
       });
 
-      // Generar ticket usando el método existente de ticket consolidado
-      let ticketConsolidado = null;
-      try {
-        const ticketResultado = await ticketPagoService.generarTicketFacturaConsolidada(
-          facturaConsolidada._id
-        );
-
-        if (ticketResultado.exitoso) {
-          console.log(`✅ Ticket de factura consolidada generado:`, ticketResultado.nombreArchivo);
-          console.log(`   - Factura: ${facturaConsolidada.numeroFactura}`);
-          console.log(`   - Incluye ${facturasPendientes.length} mes(es)`);
-          console.log(`   - Ruta: ${ticketResultado.rutaArchivo}`);
-
-          ticketConsolidado = {
-            nombreArchivo: ticketResultado.nombreArchivo,
-            rutaArchivo: ticketResultado.rutaArchivo,
-            facturaConsolidada: facturaConsolidada.numeroFactura,
-            facturasOriginales: facturasPendientes.map(f => f.numeroFactura)
-          };
-        } else {
-          console.warn(`⚠️ No se pudo generar ticket:`, ticketResultado.mensaje);
-        }
-      } catch (ticketError) {
-        console.error(`❌ Error al generar ticket:`, ticketError);
-        // No fallar la reconexión si falla la generación del ticket
-      }
+      // NOTA: El ticket se genera automáticamente en el controller de pagos
+      // cuando se crea el pago. El controller detecta que es una factura de
+      // reconexión y usa generarTicketFacturaConsolidada() automáticamente.
+      console.log(`✅ Pago creado. El ticket se generará automáticamente.`);
 
       return {
         exitoso: true,
@@ -260,8 +239,10 @@ class ReconexionService {
         reconexionId: reconexion._id,
         facturaConsolidada: facturaConsolidada.numeroFactura,
         facturaConsolidadaId: facturaConsolidada._id,
+        pagoId: pago._id, // ← Agregar el ID del pago para descargar ticket
+        numeroPago: pago.numeroPago,
         facturasOriginales: facturasPendientes.length,
-        ticketConsolidado: ticketConsolidado,
+        montoPagado: pago.montoPagado,
         saldoPendiente: opcionSeleccionada.saldoPendiente,
         fechaReconexion: new Date()
       };
@@ -349,7 +330,7 @@ class ReconexionService {
 
     // Crear el pago único
     const numeroPago = await Pago.generarNumeroPago();
-    await Pago.create({
+    const pago = await Pago.create({
       numeroPago,
       facturaId: facturaConsolidada._id,
       clienteId: clienteId,
@@ -374,7 +355,7 @@ class ReconexionService {
       }
     });
 
-    return facturaConsolidada;
+    return { facturaConsolidada, pago };
   }
 
   /**

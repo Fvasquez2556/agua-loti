@@ -332,6 +332,29 @@ class MainPageStats {
 // Instancia global
 window.mainPageStats = new MainPageStats();
 
+/**
+ * Función global helper para actualizar estadísticas desde cualquier módulo
+ * Puede ser llamada desde facturas, pagos, reconexión, etc.
+ */
+window.refreshDashboardStats = function() {
+    try {
+        // Verificar si estamos en la página principal
+        if (window.mainPageStats && typeof window.mainPageStats.loadStatistics === 'function') {
+            window.mainPageStats.loadStatistics(true);
+            console.log('📊 Estadísticas actualizadas desde módulo externo');
+        } else {
+            // Si no estamos en mainPage, intentar actualizar vía postMessage
+            // para cuando se regrese a la página principal
+            if (window.opener) {
+                window.opener.postMessage({ action: 'refreshStats' }, '*');
+            }
+            console.log('📊 Solicitud de actualización de estadísticas enviada');
+        }
+    } catch (error) {
+        console.warn('No se pudieron actualizar las estadísticas:', error);
+    }
+};
+
 // Auto-inicializar cuando el DOM esté listo
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
@@ -340,6 +363,15 @@ if (document.readyState === 'loading') {
 } else {
     window.mainPageStats.init();
 }
+
+// Escuchar mensajes de otros módulos para actualizar estadísticas
+window.addEventListener('message', (event) => {
+    if (event.data && event.data.action === 'refreshStats') {
+        if (window.mainPageStats) {
+            window.mainPageStats.loadStatistics(true);
+        }
+    }
+});
 
 // Limpiar al salir de la página
 window.addEventListener('beforeunload', () => {

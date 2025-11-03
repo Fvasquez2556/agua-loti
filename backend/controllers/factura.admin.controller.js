@@ -7,6 +7,7 @@
 const Factura = require('../models/factura.model');
 const Cliente = require('../models/cliente.model');
 const Lectura = require('../models/lectura.model');
+const Auditoria = require('../models/auditoria.model');
 const bcrypt = require('bcryptjs');
 
 // Contraseña administrativa para modificar fechas (se recomienda usar variables de entorno)
@@ -598,6 +599,656 @@ exports.eliminarFacturasMultiples = async (req, res) => {
 
   } catch (error) {
     console.error('Error al eliminar facturas múltiples:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Eliminar facturas selectivas de un cliente específico con registro de auditoría
+ * Esta es la función principal para la gestión de facturas por cliente
+ */
+exports.eliminarFacturasSelectivas = async (req, res) => {
+  try {
+    console.log('🔍 [ELIMINAR SELECTIVAS] Iniciando proceso...');
+    console.log('📦 Body recibido:', JSON.stringify(req.body, null, 2));
+
+    const { clienteId, facturasIds, password, motivo } = req.body;
+
+    // Validaciones de entrada
+    if (!clienteId) {
+      console.log('❌ [ELIMINAR SELECTIVAS] Falta clienteId');
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere el ID del cliente'
+      });
+    }
+
+    if (!facturasIds || !Array.isArray(facturasIds) || facturasIds.length === 0) {
+      console.log('❌ [ELIMINAR SELECTIVAS] facturasIds inválido:', facturasIds);
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere un array de IDs de facturas'
+      });
+    }
+
+    if (!password) {
+      console.log('❌ [ELIMINAR SELECTIVAS] Falta password');
+      return res.status(401).json({
+        success: false,
+        message: 'Se requiere contraseña administrativa'
+      });
+    }
+
+    if (!motivo || motivo.trim() === '') {
+      console.log('❌ [ELIMINAR SELECTIVAS] Falta motivo');
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere especificar el motivo de la eliminación'
+      });
+    }
+
+    console.log('🔐 [ELIMINAR SELECTIVAS] Verificando contraseña...');
+    console.log('🔑 Hash almacenado:', ADMIN_PASSWORD_HASH ? 'Existe' : 'NO EXISTE');
+
+    // Verificar contraseña administrativa
+    const passwordValida = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    console.log('🔐 [ELIMINAR SELECTIVAS] Contraseña válida:', passwordValida);
+
+    if (!passwordValida) {
+      console.log('❌ [ELIMINAR SELECTIVAS] Contraseña incorrecta');
+      return res.status(401).json({
+        success: false,
+        message: 'Contraseña administrativa incorrecta'
+      });
+    }
+
+    console.log('✅ [ELIMINAR SELECTIVAS] Contraseña verificada, continuando...');
+
+    // Verificar que el cliente existe
+    console.log('🔍 [ELIMINAR SELECTIVAS] Buscando cliente:', clienteId);
+    const cliente = await Cliente.findById(clienteId);
+
+    if (!cliente) {
+      console.log('❌ [ELIMINAR SELECTIVAS] Cliente no encontrado');
+      return res.status(404).json({
+        success: false,
+        message: 'Cliente no encontrado'
+      });
+    }
+    console.log('✅ [ELIMINAR SELECTIVAS] Cliente encontrado:', cliente.nombres, cliente.apellidos);
+
+    // Obtener todas las facturas a eliminar
+    console.log('🔍 [ELIMINAR SELECTIVAS] Buscando facturas:', facturasIds.length, 'IDs');
+    const facturas = await Factura.find({
+      _id: { $in: facturasIds },
+      clienteId: clienteId // Asegurar que las facturas pertenecen al cliente
+    });
+    console.log('✅ [ELIMINAR SELECTIVAS] Facturas encontradas:', facturas.length);
+
+    if (facturas.length === 0) {
+      console.log('❌ [ELIMINAR SELECTIVAS] No se encontraron facturas');
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontraron facturas válidas para eliminar'
+      });
+    }
+
+    if (facturas.length !== facturasIds.length) {
+      console.log('⚠️ [ELIMINAR SELECTIVAS] Cantidad de facturas no coincide');
+      console.log(`   Solicitadas: ${facturasIds.length}, Encontradas: ${facturas.length}`);
+      return res.status(400).json({
+        success: false,
+        message: `Solo se encontraron ${facturas.length} de ${facturasIds.length} facturas solicitadas`,
+        facturasEncontradas: facturas.map(f => f.numeroFactura)
+      });
+    }
+
+    // Guardar información de las facturas antes de eliminarlas
+    const facturasEliminadas = facturas.map(factura => ({
+      _id: factura._id,
+      numeroFactura: factura.numeroFactura,
+      montoTotal: factura.montoTotal,
+      estado: factura.estado,
+      fechaEmision: factura.fechaEmision,
+      fechaVencimiento: factura.fechaVencimiento
+    }));
+
+    console.log('📋 [ELIMINAR SELECTIVAS] Facturas a eliminar:', facturas.map(f => f.numeroFactura).join(', '));
+
+    // ===== LIMPIEZA EN CASCADA =====
+
+    // 1. Validar que NO sean facturas certificadas por FEL REAL
+    console.log('🔍 [ELIMINAR SELECTIVAS] Validando certificación FEL...');
+    const infileEnabled = process.env.INFILE_ENABLED === 'true';
+    console.log(`   INFILE_ENABLED: ${infileEnabled ? 'true (Producción)' : 'false (Desarrollo)'}`);
+
+    // Solo validar certificación si INFILE está habilitado
+    if (infileEnabled) {
+      // En producción: validar si tienen autorización de SAT (FEL real)
+      const facturasCertificadas = facturas.filter(f =>
+        f.fel?.certificada === true && f.fel?.autorizacion
+      );
+
+      if (facturasCertificadas.length > 0) {
+        console.log('❌ [ELIMINAR SELECTIVAS] Facturas certificadas REALES encontradas:', facturasCertificadas.length);
+        return res.status(403).json({
+          success: false,
+          message: 'No se pueden eliminar facturas certificadas por SAT/FEL. Use la función de Anulación.',
+          facturasCertificadas: facturasCertificadas.map(f => ({
+            numeroFactura: f.numeroFactura,
+            uuid: f.fel.uuid,
+            autorizacion: f.fel.autorizacion,
+            fechaCertificacion: f.fel.fechaCertificacion
+          }))
+        });
+      }
+    } else {
+      // En desarrollo: permitir eliminar facturas simuladas
+      console.log('   ⚠️  Modo desarrollo: Se permiten eliminar facturas con FEL simulado');
+    }
+    console.log('✅ [ELIMINAR SELECTIVAS] Validación FEL pasada');
+
+    const Pago = require('../models/pago.model');
+    const Reconexion = require('../models/reconexion.model');
+    let pagosEliminados = 0;
+    let lecturasActualizadas = 0;
+    let reconexionesEliminadas = 0;
+    let reconexionesActualizadas = 0;
+    let facturasConsolidadasActualizadas = 0;
+
+    // 2. Validar y eliminar pagos asociados
+    console.log('🔍 [ELIMINAR SELECTIVAS] Validando pagos asociados...');
+    for (const factura of facturas) {
+      const pagos = await Pago.find({ facturaId: factura._id });
+      console.log(`   Factura ${factura.numeroFactura}: ${pagos.length} pagos`);
+
+      // Solo validar si INFILE está habilitado (producción)
+      if (infileEnabled) {
+        // En producción: verificar si tienen autorización de SAT (pagos reales)
+        const pagosCertificados = pagos.filter(p =>
+          p.fel?.generado === true && p.fel?.autorizacion
+        );
+
+        if (pagosCertificados.length > 0) {
+          console.log('❌ [ELIMINAR SELECTIVAS] Pagos certificados REALES encontrados');
+          return res.status(403).json({
+            success: false,
+            message: 'Algunas facturas tienen pagos certificados por SAT/FEL. No se pueden eliminar.',
+            pagosCertificados: pagosCertificados.map(p => ({
+              numeroPago: p.numeroPago,
+              uuid: p.fel.uuid,
+              autorizacion: p.fel.autorizacion,
+              factura: factura.numeroFactura
+            }))
+          });
+        }
+      } else {
+        // En desarrollo: informar que se eliminarán pagos simulados
+        const pagosSimulados = pagos.filter(p => p.fel?.generado === true);
+        if (pagosSimulados.length > 0) {
+          console.log(`   ⚠️  ${pagosSimulados.length} pago(s) con FEL simulado serán eliminados`);
+        }
+      }
+
+      const pagosResult = await Pago.deleteMany({ facturaId: factura._id });
+      pagosEliminados += pagosResult.deletedCount;
+    }
+    console.log(`✅ [ELIMINAR SELECTIVAS] ${pagosEliminados} pagos eliminados`);
+
+    // 3. Actualizar lecturas asociadas (liberar referencia y cambiar estado)
+    const lecturasResult = await Lectura.updateMany(
+      { facturaId: { $in: facturasIds } },
+      {
+        $set: {
+          facturaId: null,
+          estado: 'procesada' // Ya no está facturada
+        }
+      }
+    );
+    lecturasActualizadas = lecturasResult.modifiedCount;
+
+    // 4. Limpiar reconexiones
+    // Caso A: Eliminar reconexiones donde estas facturas SON la consolidada
+    const reconexionesConsolidadasResult = await Reconexion.deleteMany({
+      facturaConsolidadaId: { $in: facturasIds }
+    });
+    reconexionesEliminadas = reconexionesConsolidadasResult.deletedCount;
+
+    // Caso B: Actualizar reconexiones donde estas facturas están en facturasOriginales
+    const reconexionesOriginalesResult = await Reconexion.updateMany(
+      { facturasOriginales: { $in: facturasIds } },
+      { $pull: { facturasOriginales: { $in: facturasIds } } }
+    );
+    reconexionesActualizadas = reconexionesOriginalesResult.modifiedCount;
+
+    // 5. Limpiar referencias en facturas consolidadas
+    // Caso A: Actualizar facturas que tienen a estas como consolidadas dentro de ellas
+    await Factura.updateMany(
+      { 'facturasConsolidadas.facturaId': { $in: facturasIds } },
+      { $pull: { facturasConsolidadas: { facturaId: { $in: facturasIds } } } }
+    );
+
+    // Caso B: Actualizar facturas originales que referencian a estas como consolidada
+    const facturasOriginalesResult = await Factura.updateMany(
+      { facturaConsolidadaRef: { $in: facturasIds } },
+      {
+        $set: {
+          facturaConsolidadaRef: null,
+          estadoConsolidacion: 'no_consolidada'
+        }
+      }
+    );
+    facturasConsolidadasActualizadas = facturasOriginalesResult.modifiedCount;
+
+    // 6. Finalmente, eliminar todas las facturas
+    await Factura.deleteMany({ _id: { $in: facturasIds } });
+
+    // Registrar en el sistema de auditoría
+    try {
+      await Auditoria.registrarEliminacion({
+        usuario: req.user?.id || null,
+        clienteAfectado: clienteId,
+        facturasEliminadas: facturasEliminadas,
+        motivo: motivo,
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent')
+      });
+    } catch (auditoriaError) {
+      console.error('Error al registrar en auditoría:', auditoriaError);
+      // No fallar la operación si falla la auditoría, solo registrar en consola
+    }
+
+    // Registrar en consola
+    console.log(`🗑️ [ELIMINACIÓN SELECTIVA DE FACTURAS CON CASCADA COMPLETA]`);
+    console.log(`Cliente: ${cliente.nombres} ${cliente.apellidos} (${cliente.dpi})`);
+    console.log(`Facturas eliminadas: ${facturasEliminadas.length}`);
+    console.log(`Pagos eliminados: ${pagosEliminados}`);
+    console.log(`Lecturas actualizadas: ${lecturasActualizadas}`);
+    console.log(`Reconexiones eliminadas: ${reconexionesEliminadas}`);
+    console.log(`Reconexiones actualizadas: ${reconexionesActualizadas}`);
+    console.log(`Facturas consolidadas actualizadas: ${facturasConsolidadasActualizadas}`);
+    console.log(`Motivo: ${motivo}`);
+    console.log(`Por: ${req.user?.username || 'Administrador'}`);
+    console.log(`Fecha: ${new Date().toLocaleString('es-GT')}`);
+
+    console.log('✅ [ELIMINAR SELECTIVAS] Proceso completado exitosamente');
+
+    res.json({
+      success: true,
+      message: `${facturasEliminadas.length} facturas eliminadas exitosamente con limpieza completa en cascada`,
+      data: {
+        cantidadEliminada: facturasEliminadas.length,
+        facturasEliminadas: facturasEliminadas.map(f => f.numeroFactura),
+        limpiezaCascada: {
+          pagosEliminados,
+          lecturasActualizadas,
+          reconexionesEliminadas,
+          reconexionesActualizadas,
+          facturasConsolidadasActualizadas
+        },
+        cliente: {
+          nombres: cliente.nombres,
+          apellidos: cliente.apellidos,
+          dpi: cliente.dpi
+        },
+        motivo: motivo,
+        eliminadoPor: req.user?.username || 'Administrador',
+        fechaEliminacion: new Date()
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [ELIMINAR SELECTIVAS] Error:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Verificar el estado de las funciones administrativas
+ */
+exports.verificarEstadoAdmin = async (req, res) => {
+  try {
+    const enabled = process.env.ENABLE_ADMIN_FUNCTIONS === 'true';
+    const environment = process.env.NODE_ENV || 'development';
+
+    let warning = null;
+    if (enabled && environment === 'production') {
+      warning = 'ADVERTENCIA: Funciones administrativas habilitadas en producción';
+    }
+
+    res.json({
+      success: true,
+      data: {
+        enabled,
+        environment,
+        warning
+      }
+    });
+  } catch (error) {
+    console.error('Error al verificar estado admin:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al verificar estado',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Eliminar pagos selectivos de un cliente específico
+ * Similar a eliminarFacturasSelectivas pero para pagos
+ */
+exports.eliminarPagosSelectivos = async (req, res) => {
+  try {
+    const { clienteId, pagosIds, password, motivo } = req.body;
+
+    // Validaciones de entrada
+    if (!clienteId || !pagosIds || !Array.isArray(pagosIds) || pagosIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere clienteId y un array de IDs de pagos'
+      });
+    }
+
+    if (!password || !motivo || motivo.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere contraseña administrativa y motivo'
+      });
+    }
+
+    // Verificar contraseña administrativa
+    const passwordValida = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    if (!passwordValida) {
+      return res.status(401).json({
+        success: false,
+        message: 'Contraseña administrativa incorrecta'
+      });
+    }
+
+    // Verificar que el cliente existe
+    const cliente = await Cliente.findById(clienteId);
+    if (!cliente) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cliente no encontrado'
+      });
+    }
+
+    // Obtener todos los pagos a eliminar
+    const Pago = require('../models/pago.model');
+    const pagos = await Pago.find({
+      _id: { $in: pagosIds },
+      clienteId: clienteId // Asegurar que pertenecen al cliente
+    });
+
+    if (pagos.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No se encontraron pagos válidos para eliminar'
+      });
+    }
+
+    if (pagos.length !== pagosIds.length) {
+      return res.status(400).json({
+        success: false,
+        message: `Solo se encontraron ${pagos.length} de ${pagosIds.length} pagos solicitados`
+      });
+    }
+
+    // Validar que NO sean pagos certificados por FEL REAL
+    const infileEnabled = process.env.INFILE_ENABLED === 'true';
+    console.log(`🔍 INFILE_ENABLED: ${infileEnabled ? 'true (Producción)' : 'false (Desarrollo)'}`);
+
+    // Solo validar si INFILE está habilitado (producción)
+    if (infileEnabled) {
+      // En producción: verificar si tienen autorización de SAT (pagos reales)
+      const pagosCertificados = pagos.filter(p =>
+        p.fel?.generado === true && p.fel?.autorizacion
+      );
+
+      if (pagosCertificados.length > 0) {
+        console.log('❌ Pagos certificados REALES encontrados');
+        return res.status(403).json({
+          success: false,
+          message: 'No se pueden eliminar pagos certificados por SAT/FEL. Use la función de Anulación.',
+          pagosCertificados: pagosCertificados.map(p => ({
+            numeroPago: p.numeroPago,
+            uuid: p.fel.uuid,
+            autorizacion: p.fel.autorizacion,
+            fechaCertificacion: p.fel.fechaCertificacion
+          }))
+        });
+      }
+    } else {
+      // En desarrollo: permitir eliminar pagos simulados
+      const pagosSimulados = pagos.filter(p => p.fel?.generado === true);
+      if (pagosSimulados.length > 0) {
+        console.log(`⚠️  Modo desarrollo: ${pagosSimulados.length} pago(s) con FEL simulado serán eliminados`);
+      }
+    }
+
+    // Guardar información antes de eliminar
+    const pagosEliminados = pagos.map(pago => ({
+      _id: pago._id,
+      numeroPago: pago.numeroPago,
+      montoPagado: pago.montoPagado,
+      facturaId: pago.facturaId,
+      fechaPago: pago.fechaPago
+    }));
+
+    // Actualizar estado de facturas asociadas
+    const facturasIds = pagos.map(p => p.facturaId);
+    let facturasActualizadas = 0;
+
+    for (const facturaId of facturasIds) {
+      // Verificar si la factura existe
+      const factura = await Factura.findById(facturaId);
+      if (factura && factura.estado === 'pagada') {
+        // Volver a estado pendiente
+        factura.estado = 'pendiente';
+        factura.fechaPago = null;
+        factura.metodoPago = null;
+        factura.referenciaPago = null;
+        await factura.save();
+        facturasActualizadas++;
+      }
+    }
+
+    // Eliminar todos los pagos
+    await Pago.deleteMany({ _id: { $in: pagosIds } });
+
+    // Registrar en auditoría
+    try {
+      await Auditoria.create({
+        accion: 'eliminacion_pagos',
+        usuario: req.user?.id || null,
+        clienteAfectado: clienteId,
+        detalles: {
+          pagosEliminados: pagosEliminados,
+          cantidadEliminada: pagosEliminados.length,
+          facturasActualizadas,
+          motivo: motivo
+        },
+        timestamp: new Date(),
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent')
+      });
+    } catch (auditoriaError) {
+      console.error('Error al registrar en auditoría:', auditoriaError);
+    }
+
+    // Registrar en consola
+    console.log(`🗑️ [ELIMINACIÓN SELECTIVA DE PAGOS]`);
+    console.log(`Cliente: ${cliente.nombres} ${cliente.apellidos} (${cliente.dpi})`);
+    console.log(`Pagos eliminados: ${pagosEliminados.length}`);
+    console.log(`Facturas actualizadas: ${facturasActualizadas}`);
+    console.log(`Motivo: ${motivo}`);
+    console.log(`Por: ${req.user?.username || 'Administrador'}`);
+    console.log(`Fecha: ${new Date().toLocaleString('es-GT')}`);
+
+    res.json({
+      success: true,
+      message: `${pagosEliminados.length} pagos eliminados exitosamente`,
+      data: {
+        cantidadEliminada: pagosEliminados.length,
+        pagosEliminados: pagosEliminados.map(p => p.numeroPago),
+        facturasActualizadas,
+        cliente: {
+          nombres: cliente.nombres,
+          apellidos: cliente.apellidos,
+          dpi: cliente.dpi
+        },
+        motivo: motivo,
+        eliminadoPor: req.user?.username || 'Administrador',
+        fechaEliminacion: new Date()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al eliminar pagos selectivos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Anular factura certificada por FEL creando Nota de Crédito
+ * IMPORTANTE: Solo para facturas YA certificadas
+ */
+exports.anularFacturaCertificada = async (req, res) => {
+  try {
+    const { facturaId, password, motivo } = req.body;
+
+    // Validaciones
+    if (!facturaId || !password || !motivo || motivo.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere facturaId, contraseña administrativa y motivo'
+      });
+    }
+
+    // Verificar contraseña
+    const passwordValida = await bcrypt.compare(password, ADMIN_PASSWORD_HASH);
+    if (!passwordValida) {
+      return res.status(401).json({
+        success: false,
+        message: 'Contraseña administrativa incorrecta'
+      });
+    }
+
+    // Obtener factura
+    const factura = await Factura.findById(facturaId)
+      .populate('clienteId', 'nombres apellidos dpi nit');
+
+    if (!factura) {
+      return res.status(404).json({
+        success: false,
+        message: 'Factura no encontrada'
+      });
+    }
+
+    // Validar que la factura esté certificada
+    if (!factura.fel || !factura.fel.certificada) {
+      return res.status(400).json({
+        success: false,
+        message: 'Solo se pueden anular facturas certificadas por FEL. Use la función de Eliminación para facturas NO certificadas.'
+      });
+    }
+
+    // Validar que no esté ya anulada
+    if (factura.estado === 'anulada') {
+      return res.status(400).json({
+        success: false,
+        message: 'La factura ya está anulada',
+        facturaAnulada: {
+          numeroFactura: factura.numeroFactura,
+          uuid: factura.fel.uuid,
+          observaciones: factura.observaciones
+        }
+      });
+    }
+
+    // TODO: Integración con Infile para generar Nota de Crédito (NCRE)
+    // Por ahora, solo marcamos como anulada y registramos
+
+    // Marcar factura como anulada
+    factura.estado = 'anulada';
+    factura.observaciones = (factura.observaciones || '') +
+      `\n[${new Date().toLocaleString('es-GT')}] ANULADA vía FEL - Motivo: ${motivo}. ` +
+      `Anulado por: ${req.user?.username || 'Administrador'}`;
+    factura.actualizadoPor = req.user?.id;
+
+    await factura.save();
+
+    // Registrar en auditoría
+    try {
+      await Auditoria.create({
+        accion: 'anulacion_factura_fel',
+        usuario: req.user?.id || null,
+        clienteAfectado: factura.clienteId._id,
+        detalles: {
+          facturaAnulada: {
+            _id: factura._id,
+            numeroFactura: factura.numeroFactura,
+            uuid: factura.fel.uuid,
+            montoTotal: factura.montoTotal
+          },
+          motivo: motivo
+        },
+        timestamp: new Date(),
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('user-agent')
+      });
+    } catch (auditoriaError) {
+      console.error('Error al registrar en auditoría:', auditoriaError);
+    }
+
+    // Registrar en consola
+    console.log(`⚠️ [ANULACIÓN DE FACTURA CERTIFICADA FEL]`);
+    console.log(`Factura: ${factura.numeroFactura}`);
+    console.log(`UUID: ${factura.fel.uuid}`);
+    console.log(`Cliente: ${factura.clienteId.nombres} ${factura.clienteId.apellidos}`);
+    console.log(`Motivo: ${motivo}`);
+    console.log(`Por: ${req.user?.username || 'Administrador'}`);
+    console.log(`Fecha: ${new Date().toLocaleString('es-GT')}`);
+
+    res.json({
+      success: true,
+      message: 'Factura anulada exitosamente. Debe generar Nota de Crédito en Infile.',
+      data: {
+        facturaAnulada: {
+          numeroFactura: factura.numeroFactura,
+          uuid: factura.fel.uuid,
+          montoTotal: factura.montoTotal,
+          fechaCertificacion: factura.fel.fechaCertificacion
+        },
+        cliente: {
+          nombres: factura.clienteId.nombres,
+          apellidos: factura.clienteId.apellidos,
+          dpi: factura.clienteId.dpi
+        },
+        motivo: motivo,
+        anuladoPor: req.user?.username || 'Administrador',
+        fechaAnulacion: new Date(),
+        proximoPaso: 'Generar Nota de Crédito (NCRE) en el sistema de Infile'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al anular factura certificada:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
