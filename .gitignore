@@ -64,3 +64,11 @@ __tests__/
 *.cert
 *.pfx
 *.p12
+
+# Electron
+dist/
+out/
+build/*.ico
+build/*.icns
+build/*.png
+!build/README.md

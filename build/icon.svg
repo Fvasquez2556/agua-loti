@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo circular azul -->
+  <circle cx="256" cy="256" r="240" fill="#1e88e5" stroke="#0d47a1" stroke-width="8"/>
+
+  <!-- Gota de agua blanca -->
+  <path d="M 256 100
+           C 256 100, 200 180, 200 260
+           C 200 310, 225 350, 256 350
+           C 287 350, 312 310, 312 260
+           C 312 180, 256 100, 256 100 Z"
+        fill="#ffffff"
+        stroke="#e3f2fd"
+        stroke-width="4"/>
+
+  <!-- Brillo en la gota -->
+  <ellipse cx="240" cy="200" rx="20" ry="35" fill="#e3f2fd" opacity="0.6"/>
+
+  <!-- Texto LOTI -->
+  <text x="256" y="440"
+        font-family="Arial, sans-serif"
+        font-size="60"
+        font-weight="bold"
+        fill="#ffffff"
+        text-anchor="middle">LOTI</text>
+</svg>
