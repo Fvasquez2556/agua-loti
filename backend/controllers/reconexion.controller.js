@@ -86,3 +86,73 @@ exports.procesarReconexion = async (req, res) => {
     });
   }
 };
+
+/**
+ * Obtiene la lista priorizada de clientes que requieren reconexión
+ * (≥2 meses de mora)
+ */
+exports.obtenerListaPriorizada = async (req, res) => {
+  try {
+    const moraService = require('../services/mora.service');
+    const Cliente = require('../models/cliente.model');
+    const Factura = require('../models/factura.model');
+
+    console.log('📋 Generando lista priorizada de clientes con mora...');
+
+    // Obtener todos los clientes activos o suspendidos
+    const clientes = await Cliente.find({
+      estado: { $in: ['activo', 'suspendido'] }
+    }).select('_id nombres apellidos dpi contador lote proyecto estadoServicio');
+
+    const clientesPriorizados = [];
+
+    // Analizar cada cliente
+    for (const cliente of clientes) {
+      try {
+        // Calcular mora del cliente
+        const mora = await moraService.calcularMoraAcumuladaCliente(cliente._id);
+
+        // Solo incluir clientes con 2 o más meses de atraso
+        if (mora.mesesAtrasados >= 2) {
+          clientesPriorizados.push({
+            clienteId: cliente._id.toString(),
+            nombreCompleto: `${cliente.nombres} ${cliente.apellidos}`,
+            dpi: cliente.dpi,
+            contador: cliente.contador,
+            lote: cliente.lote,
+            proyecto: cliente.proyecto || 'Sin proyecto',
+            estadoServicio: cliente.estadoServicio,
+            mesesAtraso: mora.mesesAtrasados,
+            deudaTotal: mora.totalAPagar,
+            montoOriginal: mora.montoOriginalTotal,
+            montoMora: mora.moraTotal,
+            facturasPendientes: mora.facturasPendientes,
+            // Datos completos del cliente para usar después
+            clienteData: cliente
+          });
+        }
+      } catch (error) {
+        console.error(`❌ Error al calcular mora de cliente ${cliente._id}:`, error.message);
+        // Continuar con el siguiente cliente
+        continue;
+      }
+    }
+
+    console.log(`✅ Lista generada: ${clientesPriorizados.length} clientes requieren reconexión`);
+
+    res.json({
+      success: true,
+      message: `Se encontraron ${clientesPriorizados.length} clientes que requieren reconexión`,
+      data: clientesPriorizados,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('[ReconexionController] Error al generar lista priorizada:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al generar lista de clientes priorizados',
+      error: error.message
+    });
+  }
+};

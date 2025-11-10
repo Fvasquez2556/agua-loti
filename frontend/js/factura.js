@@ -590,9 +590,9 @@ function updateInvoicePreview(breakdown) {
             `${new Date(periodoInicio).toLocaleDateString('es-GT')} - ${new Date(periodoFin).toLocaleDateString('es-GT')}`;
     }
     
-    // Fecha límite (30 días después)
+    // Fecha límite (7 días después)
     const fechaLimite = new Date();
-    fechaLimite.setDate(fechaLimite.getDate() + 30);
+    fechaLimite.setDate(fechaLimite.getDate() + 7);
     document.getElementById('preview-limite').textContent = fechaLimite.toLocaleDateString('es-GT');
     
     // Detalles de consumo
@@ -657,9 +657,9 @@ function showConfirmationModal() {
     const modal = document.getElementById('confirmModal');
     const messageEl = document.getElementById('confirmMessage');
     const detailsEl = document.getElementById('confirmDetails');
-    
+
     messageEl.textContent = '¿Está seguro de generar esta factura interna?';
-    
+
     detailsEl.innerHTML = `
         <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
             <p><strong>Cliente:</strong> ${currentClientData.nombres} ${currentClientData.apellidos}</p>
@@ -668,8 +668,14 @@ function showConfirmationModal() {
             <p><strong>Período:</strong> ${document.getElementById('periodoInicio').value} - ${document.getElementById('periodoFin').value}</p>
         </div>
     `;
-    
+
     modal.style.display = 'block';
+
+    // Hacer scroll suave hacia arriba para que el modal sea visible
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
 }
 
 /**

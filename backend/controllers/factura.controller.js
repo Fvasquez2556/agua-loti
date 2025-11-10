@@ -3,6 +3,9 @@ const Factura = require('../models/factura.model');
 const Lectura = require('../models/lectura.model');
 const Cliente = require('../models/cliente.model');
 const Pago = require('../models/pago.model');
+const notificacionesService = require('../services/notificaciones.service');
+const ticketFacturaTemporalService = require('../services/ticketFacturaTemporal.service');
+const InfileService = require('../services/infile.service');
 
 /**
  * Obtener todas las facturas con filtros opcionales
@@ -203,7 +206,7 @@ exports.createFactura = async (req, res) => {
     // Crear factura
     const fechaEmision = new Date();
     const fechaVencimiento = new Date(fechaEmision);
-    fechaVencimiento.setDate(fechaVencimiento.getDate() + 30); // 30 días para pagar
+    fechaVencimiento.setDate(fechaVencimiento.getDate() + 7); // 7 días para pagar
 
     const factura = new Factura({
       numeroFactura,
@@ -249,13 +252,75 @@ exports.createFactura = async (req, res) => {
     // Asociar factura con lectura
     await lectura.asociarFactura(factura._id);
 
-    // Poblar datos para respuesta
-    await factura.populate('clienteId', 'nombres apellidos contador lote proyecto');
+    // ========================================
+    // CERTIFICACIÓN FEL (FACTURA ELECTRÓNICA)
+    // ========================================
+    // NOTA: La certificación FEL se realiza al momento del PAGO, no al crear la factura temporal
+    // Las facturas temporales solo sirven como recordatorio de pago
+    let certificacionFEL = null;
+
+    // Poblar datos para respuesta (con todos los campos necesarios para notificaciones)
+    await factura.populate('clienteId', 'nombres apellidos contador lote proyecto correoElectronico whatsapp');
+
+    // ========================================
+    // GENERAR TICKET TEMPORAL
+    // ========================================
+    let ticketTemporal = null;
+    try {
+      const resultadoTicket = await ticketFacturaTemporalService.generarTicketTemporal(factura._id);
+      if (resultadoTicket.exitoso) {
+        ticketTemporal = {
+          generado: true,
+          rutaArchivo: resultadoTicket.rutaArchivo,
+          nombreArchivo: resultadoTicket.nombreArchivo
+        };
+        console.log(`✅ Ticket temporal generado: ${resultadoTicket.nombreArchivo}`);
+      } else {
+        console.warn(`⚠️ No se pudo generar ticket temporal: ${resultadoTicket.mensaje}`);
+        ticketTemporal = {
+          generado: false,
+          mensaje: resultadoTicket.mensaje
+        };
+      }
+    } catch (ticketError) {
+      console.error('❌ Error al generar ticket temporal:', ticketError);
+      ticketTemporal = {
+        generado: false,
+        mensaje: ticketError.message
+      };
+    }
+
+    // ========================================
+    // ENVIAR NOTIFICACIONES AUTOMÁTICAS
+    // ========================================
+    let notificaciones = null;
+    try {
+      // Usar el ticket temporal como adjunto si se generó correctamente
+      const rutaPDF = ticketTemporal?.generado ? ticketTemporal.rutaArchivo : null;
+
+      const resultadosNotificaciones = await notificacionesService.notificarNuevaFactura(
+        cliente,
+        factura,
+        rutaPDF
+      );
+
+      notificaciones = resultadosNotificaciones;
+    } catch (notifError) {
+      // Si falla el envío de notificaciones, no afectar la creación de la factura
+      console.error('❌ Error enviando notificaciones:', notifError);
+      notificaciones = {
+        error: 'No se pudieron enviar las notificaciones',
+        detalles: notifError.message
+      };
+    }
 
     res.status(201).json({
       success: true,
       message: 'Factura generada exitosamente',
-      data: factura
+      data: factura,
+      certificacionFEL: certificacionFEL,
+      ticketTemporal: ticketTemporal,
+      notificaciones: notificaciones
     });
 
   } catch (error) {
@@ -370,12 +435,43 @@ exports.anularFactura = async (req, res) => {
     factura.actualizadoPor = req.user.id;
     await factura.save();
 
+    // Si la factura estaba certificada con FEL, anularla en Infile
+    let anulacionFEL = null;
+    if (factura.fel.certificada && process.env.INFILE_ENABLED === 'true') {
+      try {
+        console.log(`📄 Anulando factura FEL ${factura.fel.uuid}...`);
+
+        const infileService = new InfileService();
+        await infileService.anularDocumento(
+          factura.fel.uuid,
+          factura.fel.numeroAutorizacion,
+          motivo || 'Anulación de factura'
+        );
+
+        anulacionFEL = {
+          anulada: true,
+          mensaje: 'Factura anulada en FEL exitosamente'
+        };
+
+        console.log(`✅ Factura anulada en FEL: ${factura.fel.uuid}`);
+      } catch (felError) {
+        console.error('❌ Error al anular factura en FEL:', felError);
+        anulacionFEL = {
+          anulada: false,
+          mensaje: 'Error al anular en FEL',
+          error: felError.message
+        };
+        // No fallar la anulación local si falla la anulación en FEL
+      }
+    }
+
     await factura.populate('clienteId', 'nombres apellidos contador proyecto');
 
     res.json({
       success: true,
       message: 'Factura anulada exitosamente',
-      data: factura
+      data: factura,
+      anulacionFEL: anulacionFEL
     });
 
   } catch (error) {

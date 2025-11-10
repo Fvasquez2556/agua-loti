@@ -99,11 +99,15 @@ const pagoSchema = new mongoose.Schema({
   
   // Información de Facturación Electrónica en Línea (FEL)
   fel: {
-    generado: {
+    certificada: {
       type: Boolean,
       default: false
     },
     uuid: {
+      type: String,
+      default: null
+    },
+    numeroAutorizacion: {
       type: String,
       default: null
     },
@@ -119,21 +123,26 @@ const pagoSchema = new mongoose.Schema({
       type: Date,
       default: null
     },
-    codigoAutorizacion: {
+    xmlCertificado: {
       type: String,
       default: null
     },
-    xmlResponse: {
+    urlVerificacion: {
       type: String,
       default: null
     },
-    pdfUrl: {
+    intentosFallidos: {
+      type: Number,
+      default: 0
+    },
+    ultimoError: {
       type: String,
       default: null
     },
-    error: {
+    tipoDocumento: {
       type: String,
-      default: null
+      enum: ['FACT', 'NCRE', 'NDEB', 'RECI'],
+      default: 'RECI'
     }
   },
   
@@ -174,7 +183,7 @@ const pagoSchema = new mongoose.Schema({
     { clienteId: 1, fechaPago: -1 },
     { metodoPago: 1, fechaPago: -1 },
     { estado: 1, fechaPago: -1 },
-    { 'fel.generado': 1, fechaPago: -1 }
+    { 'fel.certificada': 1, fechaPago: -1 }
   ]
 });
 
@@ -211,19 +220,20 @@ pagoSchema.pre('save', function(next) {
 
 // Métodos de instancia
 pagoSchema.methods.generarDTE = async function() {
-  // TODO: Implementar integración con FEL/SAT
+  // TODO: Implementar integración con FEL/SAT usando infile.service.js
   // Por ahora, simulamos la generación del DTE
   try {
-    // Aquí iría la lógica de integración con el proveedor de FEL
-    this.fel.generado = true;
+    // Aquí iría la lógica de integración con el proveedor de FEL (Infile)
+    this.fel.certificada = true;
     this.fel.serie = 'A';
     this.fel.numero = await this.constructor.generarNumeroDTE();
     this.fel.fechaCertificacion = new Date();
     this.fel.uuid = require('crypto').randomUUID();
-    this.fel.codigoAutorizacion = `SAT-${Date.now()}`;
-    
+    this.fel.numeroAutorizacion = `SAT-${Date.now()}`;
+    this.fel.tipoDocumento = 'RECI';
+
     await this.save();
-    
+
     return {
       success: true,
       dte: {
@@ -231,11 +241,13 @@ pagoSchema.methods.generarDTE = async function() {
         numero: this.fel.numero,
         uuid: this.fel.uuid,
         fechaCertificacion: this.fel.fechaCertificacion,
-        codigoAutorizacion: this.fel.codigoAutorizacion
+        numeroAutorizacion: this.fel.numeroAutorizacion,
+        tipoDocumento: this.fel.tipoDocumento
       }
     };
   } catch (error) {
-    this.fel.error = error.message;
+    this.fel.intentosFallidos = (this.fel.intentosFallidos || 0) + 1;
+    this.fel.ultimoError = error.message;
     await this.save();
     throw error;
   }
@@ -414,6 +426,6 @@ pagoSchema.statics.obtenerResumenPagos = async function(filtros = {}) {
 
 // Índices adicionales para optimización
 pagoSchema.index({ fechaPago: -1 });
-pagoSchema.index({ 'fel.generado': 1, 'fel.fechaCertificacion': -1 });
+pagoSchema.index({ 'fel.certificada': 1, 'fel.fechaCertificacion': -1 });
 
 module.exports = mongoose.model('Pago', pagoSchema);

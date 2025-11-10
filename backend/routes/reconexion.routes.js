@@ -17,4 +17,10 @@ router.get('/opciones/:clienteId', reconexionController.obtenerOpcionesReconexio
  */
 router.post('/procesar/:clienteId', reconexionController.procesarReconexion);
 
+/**
+ * @route GET /api/reconexion/lista-priorizada
+ * @desc Obtener lista de clientes que requieren reconexión (≥2 meses mora)
+ */
+router.get('/lista-priorizada', reconexionController.obtenerListaPriorizada);
+
 module.exports = router;

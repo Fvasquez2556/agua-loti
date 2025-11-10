@@ -1,7 +1,10 @@
 /**
- * Gestor de Reconexión de Servicio
- * Maneja la interacción con el API de reconexión
+ * Gestor de Reconexión de Servicio - VERSIÓN MEJORADA
+ * Con lista priorizada y búsqueda en tiempo real sin tildes
  */
+
+// Variable global para almacenar la lista completa de clientes
+let clientesPriorizados = [];
 
 class ReconexionManager {
     constructor() {
@@ -14,160 +17,277 @@ class ReconexionManager {
     }
 
     /**
-     * Inicialización
+     * INICIALIZACIÓN MEJORADA
      */
-    init() {
-        console.log('ReconexionManager inicializado');
+    async init() {
+        console.log('🚀 ReconexionManager v2.0 inicializado');
+        this.setupEventListeners();
 
-        // Agregar enter en búsqueda
-        const searchInput = document.getElementById('searchCliente');
-        if (searchInput) {
-            searchInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.buscarCliente();
-                }
-            });
-        }
+        // Cargar la lista priorizada al iniciar
+        await this.cargarListaPriorizada();
 
         // Verificar si viene de otra página con clienteId
         const urlParams = new URLSearchParams(window.location.search);
         const clienteId = urlParams.get('clienteId');
         if (clienteId) {
-            this.cargarClientePorId(clienteId);
+            console.log('📋 Cliente especificado en URL:', clienteId);
+            this.seleccionarCliente(clienteId);
         }
     }
 
     /**
-     * Cargar cliente por ID (desde URL)
+     * NUEVA: Configurar Event Listeners
      */
-    async cargarClientePorId(clienteId) {
+    setupEventListeners() {
+        // Listener para la búsqueda en vivo
+        const searchInput = document.getElementById('searchClienteInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.filtrarTablaEnVivo(e.target.value);
+            });
+        }
+
+        // Listener para cambio de método de pago
+        const metodoPago = document.getElementById('metodoPago');
+        if (metodoPago) {
+            metodoPago.addEventListener('change', (e) => {
+                this.toggleCamposCheque(e.target.value);
+            });
+        }
+    }
+
+    /**
+     * NUEVA: Cargar la lista de clientes priorizados
+     */
+    async cargarListaPriorizada() {
         this.showLoading(true);
         try {
+            console.log('📡 Solicitando lista priorizada al servidor...');
+
             const response = await AuthUtils.authenticatedFetch(
-                `${this.API_BASE}/clientes/${clienteId}`
+                `${this.API_BASE}/reconexion/lista-priorizada`
             );
             const data = await response.json();
 
-            if (response.ok && data.data) {
-                this.currentCliente = data.data;
-                this.currentClienteId = clienteId;
-                this.mostrarInfoCliente(data.data);
-                // Automáticamente verificar reconexión
-                await this.verificarReconexion();
+            if (response.ok && data.success) {
+                clientesPriorizados = data.data;
+                console.log(`✅ Lista cargada: ${clientesPriorizados.length} clientes`);
+
+                this.renderizarTablaPriorizada(clientesPriorizados);
+            } else {
+                throw new Error(data.message || 'Error al cargar lista');
             }
         } catch (error) {
-            console.error('Error:', error);
-            this.showMessage('Error al cargar información del cliente', 'error');
+            console.error('❌ Error:', error);
+            this.showMessage('Error al cargar la lista de clientes pendientes', 'error');
+            this.renderizarTablaVacia('Error al cargar datos');
         } finally {
             this.showLoading(false);
         }
     }
 
     /**
-     * Buscar cliente
+     * NUEVA: Renderizar la tabla de prioridad
      */
-    async buscarCliente() {
-        const searchTerm = document.getElementById('searchCliente').value.trim();
+    renderizarTablaPriorizada(clientes) {
+        const tbody = document.getElementById('priorityTableBody');
+        tbody.innerHTML = '';
 
-        if (!searchTerm) {
-            this.showMessage('Por favor ingresa un término de búsqueda', 'error');
+        if (clientes.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 30px; color: #6c757d;">
+                        ✅ ¡Excelente! No hay clientes que requieran reconexión en este momento.
+                    </td>
+                </tr>`;
             return;
         }
 
+        // Ordenar por meses de atraso (mayor a menor)
+        clientes.sort((a, b) => b.mesesAtraso - a.mesesAtraso);
+
+        clientes.forEach(cliente => {
+            const tr = document.createElement('tr');
+
+            // Determinar color según urgencia
+            let colorUrgencia = '';
+            if (cliente.mesesAtraso >= 4) {
+                colorUrgencia = 'color: #c92a2a; font-weight: 700;';
+            } else if (cliente.mesesAtraso >= 3) {
+                colorUrgencia = 'color: #e03131; font-weight: 600;';
+            } else {
+                colorUrgencia = 'color: #f76707; font-weight: 600;';
+            }
+
+            tr.innerHTML = `
+                <td>
+                    <strong>${cliente.nombreCompleto}</strong><br>
+                    <small>${cliente.dpi}</small>
+                </td>
+                <td>${cliente.proyecto}</td>
+                <td style="${colorUrgencia}">${cliente.mesesAtraso}</td>
+                <td style="font-weight: 600; color: #d6336c;">Q ${cliente.deudaTotal.toFixed(2)}</td>
+                <td>
+                    <button onclick="reconexionManager.seleccionarCliente('${cliente.clienteId}')">
+                        Seleccionar
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    /**
+     * NUEVA: Renderizar tabla vacía con mensaje
+     */
+    renderizarTablaVacia(mensaje) {
+        const tbody = document.getElementById('priorityTableBody');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 30px; color: #6c757d;">
+                    ${mensaje}
+                </td>
+            </tr>`;
+    }
+
+    /**
+     * NUEVA: Normalizar texto (quitar tildes para búsqueda)
+     */
+    normalizarTexto(texto) {
+        if (!texto) return '';
+        return texto
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    /**
+     * NUEVA: Filtrar la tabla en vivo (búsqueda en tiempo real)
+     */
+    filtrarTablaEnVivo(termino) {
+        if (!termino || termino.trim() === '') {
+            // Si está vacío, mostrar todos
+            this.renderizarTablaPriorizada(clientesPriorizados);
+            return;
+        }
+
+        const terminoNormalizado = this.normalizarTexto(termino);
+
+        const clientesFiltrados = clientesPriorizados.filter(cliente => {
+            const nombre = this.normalizarTexto(cliente.nombreCompleto);
+            const dpi = this.normalizarTexto(cliente.dpi);
+            const contador = this.normalizarTexto(cliente.contador || '');
+            const proyecto = this.normalizarTexto(cliente.proyecto || '');
+
+            return nombre.includes(terminoNormalizado) ||
+                   dpi.includes(terminoNormalizado) ||
+                   contador.includes(terminoNormalizado) ||
+                   proyecto.includes(terminoNormalizado);
+        });
+
+        if (clientesFiltrados.length === 0) {
+            this.renderizarTablaVacia(`No se encontraron clientes que coincidan con "${termino}"`);
+        } else {
+            this.renderizarTablaPriorizada(clientesFiltrados);
+        }
+    }
+
+    /**
+     * NUEVA: Acción unificada para seleccionar un cliente
+     */
+    async seleccionarCliente(clienteId) {
+        console.log('🔍 Seleccionando cliente:', clienteId);
+
+        // Ocultar placeholder y mostrar loading
+        this.ocultarPlaceholder();
+        this.hideAllActionPanels();
         this.showLoading(true);
 
         try {
-            const response = await AuthUtils.authenticatedFetch(
-                `${this.API_BASE}/clientes?buscar=${encodeURIComponent(searchTerm)}`
-            );
+            // Buscar el cliente en la lista
+            let cliente = clientesPriorizados.find(c => c.clienteId === clienteId);
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || 'Error al buscar cliente');
+            if (cliente) {
+                this.currentCliente = cliente.clienteData || cliente;
+                this.currentClienteId = clienteId;
+                this.mostrarInfoCliente(cliente);
+            } else {
+                // Si no está en la lista, cargar desde API
+                await this.cargarClientePorId(clienteId);
             }
 
-            if (!data.data || data.data.length === 0) {
-                this.showMessage('No se encontró ningún cliente', 'error');
-                this.hideAll();
-                return;
-            }
-
-            const cliente = data.data[0];
-            this.currentCliente = cliente;
-            this.currentClienteId = cliente._id;
-
-            this.mostrarInfoCliente(cliente);
+            // Verificar opciones de reconexión
+            await this.verificarReconexion();
 
         } catch (error) {
-            console.error('Error:', error);
-            this.showMessage(error.message, 'error');
-            this.hideAll();
+            console.error('❌ Error al seleccionar cliente:', error);
+            this.showMessage('Error al cargar datos del cliente', 'error');
+            this.mostrarPlaceholder();
         } finally {
             this.showLoading(false);
         }
     }
 
     /**
-     * Mostrar información del cliente
+     * Cargar cliente por ID desde API
+     */
+    async cargarClientePorId(clienteId) {
+        const response = await AuthUtils.authenticatedFetch(
+            `${this.API_BASE}/clientes/${clienteId}`
+        );
+        const data = await response.json();
+
+        if (response.ok && data.data) {
+            this.currentCliente = data.data;
+            this.currentClienteId = clienteId;
+            this.mostrarInfoCliente(data.data);
+        } else {
+            throw new Error(data.message || 'Cliente no encontrado');
+        }
+    }
+
+    /**
+     * MODIFICADA: Mostrar información del cliente
      */
     mostrarInfoCliente(cliente) {
+        const clienteInfo = document.getElementById('clienteInfo');
+
+        // Poblar información
         document.getElementById('clienteNombre').textContent =
-            `${cliente.nombres || ''} ${cliente.apellidos || ''}`.trim();
-        document.getElementById('clienteDPI').textContent = cliente.dpi || 'N/A';
-        document.getElementById('clienteContador').textContent =
-            cliente.contador || 'N/A';
-        document.getElementById('numeroReconexiones').textContent =
-            cliente.numeroReconexiones || 0;
+            cliente.nombreCompleto || `${cliente.nombres} ${cliente.apellidos}`;
+        document.getElementById('clienteDPI').textContent = cliente.dpi;
+        document.getElementById('clienteContador').textContent = cliente.contador;
+        document.getElementById('clienteLote').textContent = cliente.lote || 'N/A';
+        document.getElementById('clienteProyecto').textContent = cliente.proyecto || 'Sin proyecto';
 
         const estadoBadge = document.getElementById('clienteEstado');
-        const estado = cliente.estadoServicio || 'activo';
-        estadoBadge.textContent = estado.toUpperCase();
-        estadoBadge.className = `badge ${estado}`;
+        estadoBadge.textContent = cliente.estadoServicio || cliente.estado;
+        estadoBadge.className = `badge ${cliente.estadoServicio || cliente.estado}`;
 
-        document.getElementById('clienteInfo').classList.add('visible');
-        document.getElementById('opcionesReconexion').classList.remove('visible');
-        document.getElementById('formularioPago').classList.remove('visible');
+        // Mostrar el panel
+        clienteInfo.classList.remove('hidden');
+        clienteInfo.classList.add('visible');
     }
 
     /**
      * Verificar opciones de reconexión
      */
     async verificarReconexion() {
-        if (!this.currentClienteId) {
-            this.showMessage('No hay cliente seleccionado', 'error');
-            return;
-        }
-
-        this.showLoading(true);
-
         try {
             const response = await AuthUtils.authenticatedFetch(
                 `${this.API_BASE}/reconexion/opciones/${this.currentClienteId}`
             );
-
             const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(data.message || 'Error al obtener opciones');
+            if (response.ok && data.success) {
+                this.opcionesReconexion = data.data;
+                this.mostrarOpciones(data.data);
+            } else {
+                throw new Error(data.message || 'Error al verificar reconexión');
             }
-
-            if (!data.data.requiereReconexion) {
-                this.showMessage(
-                    'Este cliente no requiere reconexión. Tiene menos de 2 meses de atraso.',
-                    'error'
-                );
-                return;
-            }
-
-            this.opcionesReconexion = data.data;
-            this.mostrarOpciones(data.data);
-
         } catch (error) {
-            console.error('Error:', error);
-            this.showMessage(error.message, 'error');
-        } finally {
-            this.showLoading(false);
+            console.error('❌ Error:', error);
+            this.showMessage('Error al calcular opciones de reconexión', 'error');
         }
     }
 
@@ -175,129 +295,89 @@ class ReconexionManager {
      * Mostrar opciones de reconexión
      */
     mostrarOpciones(opciones) {
-        // Mostrar meses de atraso
-        document.getElementById('mesesAtraso').textContent =
-            `${opciones.mesesAtrasados} meses de atraso`;
+        const opcionesSection = document.getElementById('opcionesReconexion');
 
-        // Mostrar deuda total
-        document.getElementById('deudaTotal').textContent =
-            `Q${opciones.deudaTotal.toFixed(2)}`;
+        // Actualizar alerta
+        document.getElementById('mesesAtrasadosAlert').textContent = opciones.mesesAtrasados;
 
-        // OPCIÓN PARCIAL (80%)
-        const parcial = opciones.opcionParcial;
+        // Opción Parcial (80%)
         document.getElementById('montoParcialDeuda').textContent =
-            `Q${parcial.montoDeuda.toFixed(2)}`;
-        document.getElementById('saldoPendiente80').textContent =
-            `Q${parcial.saldoPendiente.toFixed(2)}`;
+            `Q ${opciones.opcionParcial.montoDeuda.toFixed(2)}`;
+        document.getElementById('saldoParcialPendiente').textContent =
+            `Q ${opciones.opcionParcial.saldoPendiente.toFixed(2)}`;
         document.getElementById('totalParcial').textContent =
-            `Q${parcial.totalAPagar.toFixed(2)}`;
+            `Q ${opciones.opcionParcial.totalAPagar.toFixed(2)}`;
 
-        // OPCIÓN TOTAL (100%)
-        const total = opciones.opcionTotal;
+        // Opción Total (100%)
         document.getElementById('montoTotalDeuda').textContent =
-            `Q${total.montoDeuda.toFixed(2)}`;
-        document.getElementById('montoDescuento').textContent =
-            `-Q${total.descuento.montoDescuento.toFixed(2)}`;
-        document.getElementById('totalCompleto').textContent =
-            `Q${total.totalAPagar.toFixed(2)}`;
+            `Q ${opciones.opcionTotal.montoDeuda.toFixed(2)}`;
+        document.getElementById('totalTotal').textContent =
+            `Q ${opciones.opcionTotal.totalAPagar.toFixed(2)}`;
 
-        // Mostrar detalle de facturas
-        this.mostrarDetalleFacturas(opciones.detalleFacturas);
-
-        // Mostrar sección
-        document.getElementById('opcionesReconexion').classList.add('visible');
-
-        // Scroll
-        document.getElementById('opcionesReconexion').scrollIntoView({
-            behavior: 'smooth'
-        });
-    }
-
-    /**
-     * Mostrar detalle de facturas
-     */
-    mostrarDetalleFacturas(facturas) {
-        const container = document.getElementById('facturasDetalle');
-        container.innerHTML = '';
-
-        if (!facturas || facturas.length === 0) {
-            container.innerHTML = '<p>No hay facturas para mostrar</p>';
-            return;
-        }
-
-        facturas.forEach(factura => {
-            const div = document.createElement('div');
-            div.className = 'factura-item';
-            div.innerHTML = `
-                <span>${factura.numeroFactura}</span>
-                <span>Q${factura.totalConMora.toFixed(2)}</span>
-            `;
-            container.appendChild(div);
-        });
+        // Mostrar el panel
+        opcionesSection.classList.remove('hidden');
+        opcionesSection.classList.add('visible');
     }
 
     /**
      * Seleccionar opción de pago
      */
     seleccionarOpcion(tipo) {
-        this.opcionSeleccionada = tipo;
-
-        // Actualizar UI
-        document.getElementById('option80').classList.remove('selected');
-        document.getElementById('option100').classList.remove('selected');
-
         if (tipo === 'parcial') {
-            document.getElementById('option80').classList.add('selected');
-            document.getElementById('radioParcial').checked = true;
+            this.opcionSeleccionada = this.opcionesReconexion.opcionParcial;
         } else {
-            document.getElementById('option100').classList.add('selected');
-            document.getElementById('radioTotal').checked = true;
+            this.opcionSeleccionada = this.opcionesReconexion.opcionTotal;
         }
 
-        // Habilitar botón continuar
-        document.getElementById('btnContinuar').disabled = false;
+        // Mostrar formulario de pago
+        this.mostrarFormularioPago(tipo);
     }
 
     /**
      * Mostrar formulario de pago
      */
-    mostrarFormularioPago() {
-        if (!this.opcionSeleccionada) {
-            this.showMessage('Por favor selecciona una opción de pago', 'error');
-            return;
-        }
+    mostrarFormularioPago(tipoOpcion) {
+        const formularioSection = document.getElementById('formularioPago');
 
-        const opcion = this.opcionSeleccionada === 'total'
-            ? this.opcionesReconexion.opcionTotal
-            : this.opcionesReconexion.opcionParcial;
+        // Actualizar resumen
+        const textoOpcion = tipoOpcion === 'parcial'
+            ? '80% de Deuda (Opción Parcial)'
+            : '100% de Deuda (Opción Total)';
 
-        // Llenar resumen
-        document.getElementById('resumenOpcion').textContent =
-            this.opcionSeleccionada === 'total' ? 'Pago Total (100%)' : 'Pago Parcial (80%)';
-        document.getElementById('resumenDeuda').textContent =
-            `Q${opcion.montoDeuda.toFixed(2)}`;
-        document.getElementById('resumenTotal').textContent =
-            `Q${opcion.totalAPagar.toFixed(2)}`;
+        document.getElementById('opcionSeleccionadaTexto').textContent = textoOpcion;
+        document.getElementById('montoAPagarTexto').textContent =
+            `Q ${this.opcionSeleccionada.totalAPagar.toFixed(2)}`;
+        document.getElementById('monto').value = this.opcionSeleccionada.totalAPagar.toFixed(2);
 
-        // Pre-llenar monto
-        document.getElementById('montoPago').value = opcion.totalAPagar.toFixed(2);
+        // Limpiar campos
+        document.getElementById('formPago').reset();
+        document.getElementById('monto').value = this.opcionSeleccionada.totalAPagar.toFixed(2);
 
-        // Mostrar formulario
-        document.getElementById('opcionesReconexion').classList.remove('visible');
-        document.getElementById('formularioPago').classList.add('visible');
+        // Mostrar el panel
+        formularioSection.classList.remove('hidden');
+        formularioSection.classList.add('visible');
 
-        // Scroll
-        document.getElementById('formularioPago').scrollIntoView({
-            behavior: 'smooth'
-        });
+        // Scroll suave al formulario
+        formularioSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     /**
-     * Volver a opciones
+     * Mostrar/ocultar campos de cheque
      */
-    volverOpciones() {
-        document.getElementById('formularioPago').classList.remove('visible');
-        document.getElementById('opcionesReconexion').classList.add('visible');
+    toggleCamposCheque(metodoPago) {
+        const camposCheque = document.getElementById('camposCheque');
+        const bancoCheque = document.getElementById('bancoCheque');
+        const numeroCheque = document.getElementById('numeroCheque');
+
+        if (metodoPago === 'cheque') {
+            camposCheque.classList.remove('hidden');
+            bancoCheque.required = true;
+            numeroCheque.required = true;
+        } else {
+            camposCheque.classList.add('hidden');
+            bancoCheque.required = false;
+            numeroCheque.required = false;
+        }
     }
 
     /**
@@ -306,184 +386,151 @@ class ReconexionManager {
     async procesarPago(event) {
         event.preventDefault();
 
-        const metodoPago = document.getElementById('metodoPago').value;
-        const monto = parseFloat(document.getElementById('montoPago').value);
-        const referencia = document.getElementById('referenciaPago').value;
+        const form = document.getElementById('formPago');
+        const formData = new FormData(form);
 
-        if (!metodoPago || !monto) {
-            this.showMessage('Por favor completa todos los campos requeridos', 'error');
-            return;
+        const datosPago = {
+            opcion: this.opcionSeleccionada === this.opcionesReconexion.opcionParcial
+                ? 'parcial'
+                : 'total',
+            metodoPago: formData.get('metodoPago'),
+            monto: parseFloat(formData.get('monto')),
+            referencia: formData.get('referencia') || null
+        };
+
+        // Si es cheque, agregar datos adicionales
+        if (datosPago.metodoPago === 'cheque') {
+            datosPago.bancoCheque = formData.get('bancoCheque');
+            datosPago.numeroCheque = formData.get('numeroCheque');
         }
-
-        const opcion = this.opcionSeleccionada === 'total'
-            ? this.opcionesReconexion.opcionTotal
-            : this.opcionesReconexion.opcionParcial;
-
-        // Validar monto
-        if (Math.abs(monto - opcion.totalAPagar) > 0.01) {
-            this.showMessage(
-                `El monto debe ser Q${opcion.totalAPagar.toFixed(2)}`,
-                'error'
-            );
-            return;
-        }
-
-        this.showLoading(true);
 
         try {
+            this.showLoading(true);
+            console.log('💳 Procesando pago:', datosPago);
+
             const response = await AuthUtils.authenticatedFetch(
                 `${this.API_BASE}/reconexion/procesar/${this.currentClienteId}`,
                 {
                     method: 'POST',
-                    body: JSON.stringify({
-                        opcion: this.opcionSeleccionada,
-                        metodoPago,
-                        monto,
-                        referencia: referencia || null
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datosPago)
                 }
             );
 
             const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(data.message || 'Error al procesar reconexión');
-            }
+            if (response.ok && data.success) {
+                console.log('✅ Reconexión procesada exitosamente');
 
-            // Descargar ticket automáticamente
-            if (data.data.pagoId) {
-                console.log('📄 Descargando ticket automáticamente...');
-                try {
-                    await this.descargarTicketPago(data.data.pagoId);
-                    console.log('✅ Ticket descargado exitosamente');
-                } catch (ticketError) {
-                    console.error('⚠️ Error al descargar ticket:', ticketError);
-                    this.showMessage('Pago registrado exitosamente. El ticket se puede descargar desde el módulo de Pagos.', 'warning');
+                // Descargar ticket automáticamente
+                if (data.data.pagoId) {
+                    console.log('📄 Descargando ticket automáticamente...');
+                    try {
+                        await this.descargarTicketPago(data.data.pagoId);
+                        console.log('✅ Ticket descargado exitosamente');
+                    } catch (ticketError) {
+                        console.error('⚠️ Error al descargar ticket:', ticketError);
+                        this.showMessage('Pago registrado exitosamente. El ticket se puede descargar desde el módulo de Pagos.', 'warning');
+                    }
                 }
+
+                this.showMessage(
+                    `✅ Reconexión procesada exitosamente. Factura: ${data.data.facturaConsolidada}`,
+                    'success'
+                );
+
+                // Limpiar vista y recargar lista
+                this.limpiarVista();
+                setTimeout(() => {
+                    this.cargarListaPriorizada();
+                }, 2000);
+
+            } else {
+                throw new Error(data.message || 'Error al procesar pago');
             }
-
-            // Mostrar confirmación
-            this.mostrarConfirmacion(data.data);
-
-            // Actualizar estadísticas del dashboard en tiempo real
-            if (typeof window.refreshDashboardStats === 'function') {
-                window.refreshDashboardStats();
-            }
-
         } catch (error) {
-            console.error('Error:', error);
-            this.showMessage(error.message, 'error');
+            console.error('❌ Error:', error);
+            this.showMessage(`Error al procesar pago: ${error.message}`, 'error');
         } finally {
             this.showLoading(false);
         }
     }
 
     /**
-     * Mostrar modal de confirmación
+     * Cancelar proceso de pago
      */
-    mostrarConfirmacion(resultado) {
-        document.getElementById('confirmCliente').textContent =
-            `${this.currentCliente.nombres || ''} ${this.currentCliente.apellidos || ''}`.trim();
-        document.getElementById('confirmMonto').textContent =
-            `Q${resultado.montoPagado || '0.00'}`;
-        document.getElementById('confirmFacturas').textContent =
-            resultado.facturasPagadas || 0;
-        document.getElementById('confirmSaldo').textContent =
-            `Q${(resultado.saldoPendiente || 0).toFixed(2)}`;
+    cancelarPago() {
+        const formularioSection = document.getElementById('formularioPago');
+        formularioSection.classList.add('hidden');
+        formularioSection.classList.remove('visible');
 
-        // Ocultar formulario
-        document.getElementById('formularioPago').classList.remove('visible');
-
-        // Mostrar modal
-        document.getElementById('modalConfirmacion').classList.add('visible');
+        // Limpiar formulario
+        document.getElementById('formPago').reset();
     }
 
     /**
-     * Imprimir comprobante
+     * NUEVA: Limpiar toda la vista
      */
-    imprimirComprobante() {
-        window.print();
-    }
-
-    /**
-     * Nueva reconexión
-     */
-    nuevaReconexion() {
-        document.getElementById('modalConfirmacion').classList.remove('visible');
-        this.hideAll();
-        document.getElementById('searchCliente').value = '';
-        this.currentCliente = null;
+    limpiarVista() {
+        this.hideAllActionPanels();
+        this.mostrarPlaceholder();
         this.currentClienteId = null;
+        this.currentCliente = null;
         this.opcionesReconexion = null;
         this.opcionSeleccionada = null;
+
+        // Limpiar búsqueda
+        const searchInput = document.getElementById('searchClienteInput');
+        if (searchInput) searchInput.value = '';
     }
 
     /**
-     * Cancelar
+     * NUEVA: Ocultar todos los paneles de acción
      */
-    cancelar() {
-        if (confirm('¿Estás seguro de cancelar el proceso de reconexión?')) {
-            this.nuevaReconexion();
-        }
-    }
-
-    /**
-     * Ocultar todas las secciones
-     */
-    hideAll() {
+    hideAllActionPanels() {
         document.getElementById('clienteInfo').classList.remove('visible');
+        document.getElementById('clienteInfo').classList.add('hidden');
         document.getElementById('opcionesReconexion').classList.remove('visible');
+        document.getElementById('opcionesReconexion').classList.add('hidden');
         document.getElementById('formularioPago').classList.remove('visible');
+        document.getElementById('formularioPago').classList.add('hidden');
     }
 
     /**
-     * Mostrar/ocultar loading
+     * NUEVA: Mostrar placeholder
+     */
+    mostrarPlaceholder() {
+        document.getElementById('actionPlaceholder').classList.remove('hidden');
+    }
+
+    /**
+     * NUEVA: Ocultar placeholder
+     */
+    ocultarPlaceholder() {
+        document.getElementById('actionPlaceholder').classList.add('hidden');
+    }
+
+    /**
+     * Mostrar indicador de carga
      */
     showLoading(show) {
-        const loading = document.getElementById('loading');
-        if (loading) {
-            if (show) {
-                loading.classList.add('visible');
-            } else {
-                loading.classList.remove('visible');
-            }
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.style.display = show ? 'flex' : 'none';
         }
     }
 
     /**
-     * Mostrar mensaje
+     * Mostrar mensaje al usuario
      */
-    showMessage(text, type = 'success') {
-        const messageEl = document.getElementById('message');
-        if (!messageEl) return;
-
-        messageEl.textContent = text;
-        messageEl.className = `message ${type}`;
-        messageEl.classList.add('visible');
-
-        setTimeout(() => {
-            messageEl.classList.remove('visible');
-        }, 5000);
-    }
-
-    /**
-     * Formatear moneda
-     */
-    formatCurrency(amount) {
-        return `Q${parseFloat(amount).toFixed(2)}`;
-    }
-
-    /**
-     * Formatear fecha
-     */
-    formatDate(dateString) {
-        if (!dateString) return 'N/A';
-        const date = new Date(dateString);
-        return date.toLocaleDateString('es-GT', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
+    showMessage(message, type = 'info') {
+        // Si existe PageUtils, usar su método
+        if (typeof PageUtils !== 'undefined' && PageUtils.showMessage) {
+            PageUtils.showMessage(message, type);
+        } else {
+            // Fallback simple
+            alert(message);
+        }
     }
 
     /**
@@ -552,7 +599,7 @@ class ReconexionManager {
     }
 }
 
-// Inicializar cuando el DOM esté listo
+// Inicializar el gestor cuando cargue la página
 let reconexionManager;
 document.addEventListener('DOMContentLoaded', () => {
     reconexionManager = new ReconexionManager();

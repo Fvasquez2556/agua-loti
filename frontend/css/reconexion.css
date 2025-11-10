@@ -1409,3 +1409,602 @@ html {
     }
 }
 
+/* ========================================
+   NUEVO DISEÑO: LAYOUT DE DOS COLUMNAS
+   ======================================== */
+
+/* Grid principal de dos columnas */
+.main-content {
+    display: grid;
+    grid-template-columns: 40% 60%;
+    gap: 20px;
+    padding: 30px;
+    align-items: flex-start;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* ========================================
+   COLUMNA IZQUIERDA: COLA DE TRABAJO
+   ======================================== */
+
+.work-queue-column {
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    height: fit-content;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.work-queue-column h3 {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+    font-size: 1.3rem;
+    border-bottom: 3px solid #51cf66;
+    padding-bottom: 10px;
+}
+
+/* Barra de búsqueda mejorada */
+.search-box {
+    margin-bottom: 15px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #51cf66;
+    box-shadow: 0 0 0 3px rgba(81, 207, 102, 0.1);
+}
+
+/* Contenedor de tabla con scroll */
+.table-responsive {
+    overflow-y: auto;
+    max-height: 60vh;
+    border: 1px solid #e1e5e9;
+    border-radius: 10px;
+    flex: 1;
+}
+
+/* Estilos de la tabla de prioridad */
+.priority-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    background: white;
+}
+
+.priority-table thead {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.priority-table th {
+    padding: 12px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.priority-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #f1f3f5;
+    color: #212529;
+}
+
+.priority-table tbody tr {
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+}
+
+.priority-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* Columnas específicas */
+.priority-table td:nth-child(1) {
+    /* Cliente */
+    font-weight: 500;
+}
+
+.priority-table td:nth-child(1) small {
+    display: block;
+    color: #6c757d;
+    font-size: 0.8rem;
+    margin-top: 3px;
+}
+
+.priority-table td:nth-child(2) {
+    /* Proyecto */
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+.priority-table td:nth-child(3) {
+    /* Meses Atraso */
+    font-weight: 700;
+    color: #e03131;
+    font-size: 1rem;
+}
+
+.priority-table td:nth-child(4) {
+    /* Deuda Total */
+    font-weight: 600;
+    color: #d6336c;
+}
+
+/* Botón de selección en tabla */
+.priority-table td button {
+    background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(81, 207, 102, 0.3);
+}
+
+.priority-table td button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(81, 207, 102, 0.4);
+}
+
+.priority-table td button:active {
+    transform: translateY(0);
+}
+
+/* ========================================
+   COLUMNA DERECHA: ÁREA DE ACCIÓN
+   ======================================== */
+
+.action-column {
+    background: #ffffff;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    min-height: 400px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+/* Placeholder inicial */
+.placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    text-align: center;
+    color: #6c757d;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 2px dashed #dee2e6;
+}
+
+.placeholder-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.placeholder p {
+    font-size: 1.1rem;
+    margin: 0;
+    max-width: 80%;
+}
+
+/* Ocultar elementos inicialmente */
+.hidden {
+    display: none !important;
+}
+
+/* Panel de información del cliente */
+.cliente-info {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border-left: 4px solid #51cf66;
+}
+
+.cliente-info h3 {
+    margin-top: 0;
+    color: #2c3e50;
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.info-item strong {
+    color: #495057;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.info-item span {
+    color: #212529;
+    font-size: 0.95rem;
+}
+
+.info-item .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.badge.activo {
+    background: #d3f9d8;
+    color: #2b8a3e;
+}
+
+.badge.suspendido {
+    background: #ffe8cc;
+    color: #d9480f;
+}
+
+/* Panel de opciones de reconexión */
+.opciones-section {
+    margin-bottom: 25px;
+}
+
+.opciones-section h3 {
+    margin-top: 0;
+    color: #2c3e50;
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+}
+
+.alert {
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    color: #856404;
+}
+
+.alert strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.alert p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Tarjetas de opciones */
+.opciones-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.opcion-card {
+    background: white;
+    border: 2px solid #e1e5e9;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.opcion-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.opcion-card.destacada {
+    border-color: #51cf66;
+    background: linear-gradient(135deg, #f8fff9 0%, #ffffff 100%);
+}
+
+.opcion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #f1f3f5;
+}
+
+.opcion-header h4 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.1rem;
+}
+
+.badge-info {
+    background: #d0ebff;
+    color: #1864ab;
+}
+
+.badge-success {
+    background: #d3f9d8;
+    color: #2b8a3e;
+}
+
+.opcion-body {
+    margin-bottom: 15px;
+}
+
+.monto-detalle {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    font-size: 0.95rem;
+}
+
+.monto-detalle.success {
+    color: #37b24d;
+}
+
+.monto-detalle span {
+    color: #6c757d;
+}
+
+.monto-detalle strong {
+    color: #212529;
+    font-weight: 600;
+}
+
+.monto-total {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.btn-opcion {
+    width: 100%;
+    padding: 12px;
+    background: #51cf66;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-opcion:hover {
+    background: #37b24d;
+    transform: translateY(-2px);
+}
+
+.btn-opcion.destacado {
+    background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+    box-shadow: 0 4px 12px rgba(81, 207, 102, 0.4);
+}
+
+/* Panel de formulario de pago */
+.pago-section {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.pago-section h3 {
+    margin-top: 0;
+    color: #2c3e50;
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+}
+
+.resumen-pago {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid #51cf66;
+}
+
+.resumen-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+}
+
+.resumen-item span {
+    color: #6c757d;
+}
+
+.resumen-item strong {
+    color: #212529;
+    font-weight: 600;
+}
+
+.monto-destacado {
+    font-size: 1.3rem !important;
+    color: #37b24d !important;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #495057;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #51cf66;
+    box-shadow: 0 0 0 3px rgba(81, 207, 102, 0.1);
+}
+
+.form-control[readonly] {
+    background: #e9ecef;
+    cursor: not-allowed;
+}
+
+.campos-cheque {
+    background: #fff9db;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px dashed #ffc107;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.form-actions button {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(81, 207, 102, 0.4);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(81, 207, 102, 0.5);
+}
+
+/* Spinner de carga */
+.spinner {
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #51cf66;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 1200px) {
+    .main-content {
+        grid-template-columns: 35% 65%;
+    }
+
+    .opciones-cards {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 20px;
+    }
+
+    .work-queue-column,
+    .action-column {
+        max-height: none;
+    }
+
+    .table-responsive {
+        max-height: 50vh;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        padding: 15px;
+    }
+
+    .priority-table {
+        font-size: 0.8rem;
+    }
+
+    .priority-table th,
+    .priority-table td {
+        padding: 8px 6px;
+    }
+
+    .opciones-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+}

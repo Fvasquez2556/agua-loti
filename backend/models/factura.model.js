@@ -91,6 +91,25 @@ const facturaSchema = new mongoose.Schema({
     required: true,
     min: 0
   },
+
+  // ===== CAMPOS DE IVA =====
+  subtotalSinIVA: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  montoIVA: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  porcentajeIVA: {
+    type: Number,
+    default: 12,
+    min: 0
+  },
   
   // Estado de la factura
   estado: {
@@ -148,26 +167,10 @@ const facturaSchema = new mongoose.Schema({
     maxlength: 500
   },
   
-  // Información técnica
-  tipoFactura: {
-    type: String,
-    enum: ['interna', 'fel'],
-    default: 'interna'
-  },
-  
-  // Para futuras implementaciones FEL
-  certificadoFEL: {
-    type: Boolean,
-    default: false
-  },
-  
-  codigoAutorizacionSAT: {
-    type: String,
-    default: null
-  },
-  
-  fechaCertificacionFEL: {
-    type: Date,
+  // ===== REFERENCIA A DOCUMENTO ORIGINAL (para Notas de Crédito/Débito) =====
+  facturaReferenciaId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Factura',
     default: null
   },
   
@@ -185,7 +188,7 @@ const facturaSchema = new mongoose.Schema({
 
   // ===== AGREGAR ESTOS CAMPOS AL SCHEMA EXISTENTE =====
 
-  // Información de Factura Electrónica (FEL)
+  // ===== INFORMACIÓN DE FACTURA ELECTRÓNICA (FEL) =====
   fel: {
     certificada: { type: Boolean, default: false },
     uuid: { type: String, default: null },
@@ -193,21 +196,15 @@ const facturaSchema = new mongoose.Schema({
     serie: { type: String, default: null },
     numero: { type: String, default: null },
     fechaCertificacion: { type: Date, default: null },
+    xmlCertificado: { type: String, default: null },
     urlVerificacion: { type: String, default: null },
     intentosFallidos: { type: Number, default: 0 },
     ultimoError: { type: String, default: null },
     tipoDocumento: {
       type: String,
-      enum: ['FACT', 'NCRE', 'NDEB', 'NABN'],
+      enum: ['FACT', 'NCRE', 'NDEB', 'RECI'],
       default: 'FACT'
     }
-  },
-
-  // Referencia a documento original (para NCRE y NDEB)
-  documentoReferencia: {
-    tipo: { type: String, enum: ['factura', 'nota'], default: null },
-    uuid: { type: String, default: null },
-    numeroDocumento: { type: String, default: null }
   },
 
   // Información de mora detallada
@@ -223,7 +220,7 @@ const facturaSchema = new mongoose.Schema({
   // Tipo de factura
   tipoFactura: {
     type: String,
-    enum: ['normal', 'reconexion'],
+    enum: ['normal', 'reconexion', 'nota-credito', 'nota-debito', 'recibo'],
     default: 'normal'
   },
 
@@ -292,10 +289,10 @@ facturaSchema.pre('save', function(next) {
     return next(new Error('La fecha de fin del período debe ser posterior a la fecha de inicio'));
   }
   
-  // Calcular fecha de vencimiento (30 días por defecto)
+  // Calcular fecha de vencimiento (7 días por defecto)
   if (!this.fechaVencimiento) {
     this.fechaVencimiento = new Date(this.fechaEmision);
-    this.fechaVencimiento.setDate(this.fechaVencimiento.getDate() + 30);
+    this.fechaVencimiento.setDate(this.fechaVencimiento.getDate() + 7);
   }
   
   next();

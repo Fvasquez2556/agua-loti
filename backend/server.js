@@ -14,6 +14,7 @@ const pagoRoutes = require("./routes/pago.routes"); // ✅ Nueva ruta para pagos
 const moraRoutes = require('./routes/mora.routes');
 const reconexionRoutes = require('./routes/reconexion.routes');
 const facturaAdminRoutes = require('./routes/factura.admin.routes');
+const notaRoutes = require('./routes/nota.routes'); // ✅ Rutas para notas de crédito y débito
 
 // Inicializar app
 const app = express();
@@ -28,7 +29,35 @@ app.use(express.urlencoded({ extended: true })); // Para forms
 
 // Conexión a MongoDB
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ Conectado a MongoDB"))
+  .then(() => {
+    console.log("✅ Conectado a MongoDB");
+
+    // ========================================
+    // INICIALIZAR SERVICIOS DE NOTIFICACIÓN
+    // ========================================
+    console.log('\n📱 Inicializando servicios de notificación...');
+
+    const notificacionesService = require('./services/notificaciones.service');
+    const estadoNotificaciones = notificacionesService.verificarEstado();
+
+    console.log('\n📊 Estado de servicios de notificación:');
+    console.log('  📧 Email:');
+    console.log(`    - Habilitado: ${estadoNotificaciones.email.habilitado ? '✅' : '❌'}`);
+    if (!estadoNotificaciones.email.habilitado) {
+      console.log('    ⚠️  Configura EMAIL_USER y EMAIL_PASSWORD en .env');
+    }
+
+    console.log('  📱 WhatsApp:');
+    console.log(`    - Habilitado: ${estadoNotificaciones.whatsapp.habilitado ? '✅' : '❌'}`);
+    console.log(`    - Conectado: ${estadoNotificaciones.whatsapp.conectado ? '✅' : '⏳ Pendiente'}`);
+    if (estadoNotificaciones.whatsapp.habilitado && !estadoNotificaciones.whatsapp.conectado) {
+      console.log('    📲 Escanea el código QR que aparecerá arriba para conectar WhatsApp');
+    }
+    if (!estadoNotificaciones.whatsapp.habilitado) {
+      console.log('    ℹ️  Configura WHATSAPP_ENABLED=true en .env para habilitar');
+    }
+    console.log('');
+  })
   .catch((err) => console.error("❌ Error conectando a MongoDB:", err));
 
 // Middleware para logging de requests (desarrollo)
@@ -51,6 +80,7 @@ app.use("/api/pagos", pagoRoutes); // ✅ Nueva ruta para pagos
 app.use('/api/mora', moraRoutes);
 app.use('/api/reconexion', reconexionRoutes);
 app.use('/api/facturas/admin', facturaAdminRoutes); // ✅ Rutas administrativas de facturas
+app.use('/api/notas', notaRoutes); // ✅ Rutas para notas de crédito y débito (NCRE, NDEB)
 
 // Ruta de prueba
 app.get('/api/test', (req, res) => {

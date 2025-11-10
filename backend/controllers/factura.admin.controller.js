@@ -100,7 +100,7 @@ exports.createFacturaConFechaPersonalizada = async (req, res) => {
       numeroFactura,
       clienteId,
       fechaEmision: fechaEmisionDate,
-      fechaVencimiento: fechaVencimientoDate || new Date(fechaEmisionDate.getTime() + 30 * 24 * 60 * 60 * 1000),
+      fechaVencimiento: fechaVencimientoDate || new Date(fechaEmisionDate.getTime() + 7 * 24 * 60 * 60 * 1000),
       periodoInicio: new Date(periodoInicio),
       periodoFin: new Date(periodoFin),
       lecturaAnterior,

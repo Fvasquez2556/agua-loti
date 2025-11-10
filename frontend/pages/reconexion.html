@@ -20,280 +20,231 @@
             </button>
         </div>
 
-        <!-- Buscador de Cliente -->
-        <div class="search-section">
-            <h3>Buscar Cliente para Reconexión</h3>
-            <div class="search-box">
-                <input
-                    type="text"
-                    id="searchCliente"
-                    placeholder="Buscar por nombre, DPI o número de contador..."
-                    class="search-input">
-                <button class="btn-primary" onclick="reconexionManager.buscarCliente()">
-                    🔍 Buscar
-                </button>
-            </div>
-        </div>
+        <main class="main-content">
+            <!-- Columna Izquierda: Cola de Trabajo -->
+            <div class="work-queue-column">
+                <h3>⚡ Clientes Pendientes de Reconexión</h3>
 
-        <!-- Información del Cliente -->
-        <div id="clienteInfo" class="cliente-info">
-            <h3>Información del Cliente</h3>
-            <div class="info-grid">
-                <div class="info-item">
-                    <strong>Nombre:</strong>
-                    <span id="clienteNombre"></span>
-                </div>
-                <div class="info-item">
-                    <strong>DPI:</strong>
-                    <span id="clienteDPI"></span>
-                </div>
-                <div class="info-item">
-                    <strong>Contador:</strong>
-                    <span id="clienteContador"></span>
-                </div>
-                <div class="info-item">
-                    <strong>Estado de Servicio:</strong>
-                    <span id="clienteEstado" class="badge"></span>
-                </div>
-                <div class="info-item">
-                    <strong>Reconexiones Previas:</strong>
-                    <span id="numeroReconexiones">0</span>
-                </div>
-            </div>
-            <button class="btn-primary" onclick="reconexionManager.verificarReconexion()">
-                🔍 Verificar Opciones de Reconexión
-            </button>
-        </div>
-
-        <!-- Opciones de Reconexión -->
-        <div id="opcionesReconexion" class="opciones-section">
-            <div class="opciones-header">
-                <h3>Opciones de Reconexión Disponibles</h3>
-                <span id="mesesAtraso" class="meses-badge"></span>
-            </div>
-
-            <!-- Resumen de Deuda -->
-            <div class="deuda-summary">
-                <div class="summary-item">
-                    <div class="summary-label">Deuda Total</div>
-                    <div class="summary-value" id="deudaTotal">Q0.00</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Costo de Reconexión</div>
-                    <div class="summary-value fixed">Q125.00</div>
-                </div>
-            </div>
-
-            <!-- Opciones de Pago -->
-            <div class="payment-options">
-                <!-- Opción 80% -->
-                <div class="option-card" id="option80" onclick="reconexionManager.seleccionarOpcion('parcial')">
-                    <div class="option-header">
-                        <input type="radio" name="paymentOption" value="parcial" id="radioParcial">
-                        <label for="radioParcial">
-                            <h4>Opción 80% - Pago Parcial</h4>
-                        </label>
-                    </div>
-                    <div class="option-body">
-                        <div class="option-detail">
-                            <span>Pago de Deuda (80%):</span>
-                            <strong id="montoParcialDeuda">Q0.00</strong>
-                        </div>
-                        <div class="option-detail">
-                            <span>Costo de Reconexión:</span>
-                            <strong>Q125.00</strong>
-                        </div>
-                        <div class="option-detail highlight">
-                            <span>Saldo Pendiente (20%):</span>
-                            <strong id="saldoPendiente80">Q0.00</strong>
-                        </div>
-                        <div class="option-total">
-                            <span>Total a Pagar Ahora:</span>
-                            <strong id="totalParcial">Q0.00</strong>
-                        </div>
-                        <div class="option-info">
-                            <p>✓ Reconexión inmediata</p>
-                            <p>✓ Pagas el 80% de la deuda</p>
-                            <p>⚠️ Quedarás con saldo pendiente</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Opción 100% -->
-                <div class="option-card recommended" id="option100" onclick="reconexionManager.seleccionarOpcion('total')">
-                    <div class="recommended-badge">⭐ Recomendado</div>
-                    <div class="option-header">
-                        <input type="radio" name="paymentOption" value="total" id="radioTotal">
-                        <label for="radioTotal">
-                            <h4>Opción 100% - Pago Total</h4>
-                        </label>
-                    </div>
-                    <div class="option-body">
-                        <div class="option-detail">
-                            <span>Pago de Deuda (100%):</span>
-                            <strong id="montoTotalDeuda">Q0.00</strong>
-                        </div>
-                        <div class="option-detail">
-                            <span>Costo de Reconexión:</span>
-                            <strong>Q125.00</strong>
-                        </div>
-                        <div class="option-detail success">
-                            <span>Descuento (5%):</span>
-                            <strong id="montoDescuento">-Q0.00</strong>
-                        </div>
-                        <div class="option-total">
-                            <span>Total a Pagar:</span>
-                            <strong id="totalCompleto">Q0.00</strong>
-                        </div>
-                        <div class="option-info">
-                            <p>✓ Reconexión inmediata</p>
-                            <p>✓ Liquidas toda la deuda</p>
-                            <p>✓ 5% de descuento incluido</p>
-                            <p>✓ Sin saldo pendiente</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Detalle de Facturas -->
-            <div class="facturas-detalle">
-                <h4>Facturas que se Pagarán</h4>
-                <div id="facturasDetalle"></div>
-            </div>
-
-            <!-- Botón de Continuar -->
-            <div class="action-buttons">
-                <button class="btn-secondary" onclick="reconexionManager.cancelar()">
-                    Cancelar
-                </button>
-                <button class="btn-primary" id="btnContinuar" disabled onclick="reconexionManager.mostrarFormularioPago()">
-                    Continuar con Pago →
-                </button>
-            </div>
-        </div>
-
-        <!-- Formulario de Pago -->
-        <div id="formularioPago" class="pago-section">
-            <h3>Confirmar Pago de Reconexión</h3>
-
-            <div class="pago-resumen">
-                <div class="resumen-item">
-                    <span>Opción Seleccionada:</span>
-                    <strong id="resumenOpcion"></strong>
-                </div>
-                <div class="resumen-item">
-                    <span>Monto de Deuda:</span>
-                    <strong id="resumenDeuda"></strong>
-                </div>
-                <div class="resumen-item">
-                    <span>Costo de Reconexión:</span>
-                    <strong>Q125.00</strong>
-                </div>
-                <div class="resumen-item total">
-                    <span>Total a Pagar:</span>
-                    <strong id="resumenTotal"></strong>
-                </div>
-            </div>
-
-            <form id="formPago" onsubmit="reconexionManager.procesarPago(event)">
-                <div class="form-group">
-                    <label for="metodoPago">Método de Pago *</label>
-                    <select id="metodoPago" required>
-                        <option value="">Seleccione un método</option>
-                        <option value="efectivo">Efectivo</option>
-                        <option value="tarjeta">Tarjeta</option>
-                        <option value="transferencia">Transferencia Bancaria</option>
-                        <option value="cheque">Cheque</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="montoPago">Monto Recibido *</label>
-                    <input
-                        type="number"
-                        id="montoPago"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        required>
-                </div>
-
-                <div class="form-group">
-                    <label for="referenciaPago">Referencia / No. de Transacción</label>
+                <!-- Barra de Búsqueda Mejorada -->
+                <div class="search-box">
                     <input
                         type="text"
-                        id="referenciaPago"
-                        placeholder="Opcional">
+                        id="searchClienteInput"
+                        placeholder="🔍 Filtrar por nombre, DPI o contador..."
+                        class="search-input">
                 </div>
 
-                <div class="form-group">
-                    <label for="observaciones">Observaciones</label>
-                    <textarea
-                        id="observaciones"
-                        rows="3"
-                        placeholder="Comentarios adicionales (opcional)"></textarea>
+                <!-- Tabla de Prioridad -->
+                <div class="table-responsive">
+                    <table class="priority-table">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Proyecto</th>
+                                <th>Meses Atraso</th>
+                                <th>Deuda Total</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="priorityTableBody">
+                            <!-- Fila de carga -->
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 30px;">
+                                    <div class="spinner"></div>
+                                    Cargando clientes...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Área de Acción -->
+            <div class="action-column">
+                <!-- Placeholder inicial -->
+                <div id="actionPlaceholder" class="placeholder">
+                    <div class="placeholder-icon">📋</div>
+                    <p>Seleccione un cliente de la lista para ver sus opciones de reconexión.</p>
                 </div>
 
-                <div class="action-buttons">
-                    <button type="button" class="btn-secondary" onclick="reconexionManager.volverOpciones()">
-                        ← Volver
-                    </button>
-                    <button type="submit" class="btn-success">
-                        ✓ Procesar Reconexión
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- Modal de Confirmación -->
-        <div id="modalConfirmacion" class="modal">
-            <div class="modal-content success">
-                <div class="modal-icon">✓</div>
-                <h2>¡Reconexión Exitosa!</h2>
-                <div class="modal-body">
-                    <p>La reconexión ha sido procesada correctamente.</p>
-                    <div class="confirmacion-detalle">
-                        <div class="detalle-item">
-                            <span>Cliente:</span>
-                            <strong id="confirmCliente"></strong>
+                <!-- Panel de Información del Cliente (oculto inicialmente) -->
+                <div id="clienteInfo" class="cliente-info hidden">
+                    <h3>Información del Cliente</h3>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <strong>Nombre Completo:</strong>
+                            <span id="clienteNombre"></span>
                         </div>
-                        <div class="detalle-item">
-                            <span>Monto Pagado:</span>
-                            <strong id="confirmMonto"></strong>
+                        <div class="info-item">
+                            <strong>DPI:</strong>
+                            <span id="clienteDPI"></span>
                         </div>
-                        <div class="detalle-item">
-                            <span>Facturas Pagadas:</span>
-                            <strong id="confirmFacturas"></strong>
+                        <div class="info-item">
+                            <strong>Contador:</strong>
+                            <span id="clienteContador"></span>
                         </div>
-                        <div class="detalle-item">
-                            <span>Saldo Pendiente:</span>
-                            <strong id="confirmSaldo"></strong>
+                        <div class="info-item">
+                            <strong>Lote:</strong>
+                            <span id="clienteLote"></span>
                         </div>
-                        <div class="detalle-item">
-                            <span>Estado del Servicio:</span>
-                            <strong class="estado-activo">ACTIVO</strong>
+                        <div class="info-item">
+                            <strong>Proyecto:</strong>
+                            <span id="clienteProyecto"></span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Estado:</strong>
+                            <span id="clienteEstado" class="badge"></span>
                         </div>
                     </div>
                 </div>
-                <div class="modal-actions">
-                    <button class="btn-secondary" onclick="reconexionManager.imprimirComprobante()">
-                        🖨️ Imprimir Comprobante
-                    </button>
-                    <button class="btn-primary" onclick="reconexionManager.nuevaReconexion()">
-                        Nueva Reconexión
-                    </button>
+
+                <!-- Panel de Opciones de Reconexión (oculto inicialmente) -->
+                <div id="opcionesReconexion" class="opciones-section hidden">
+                    <h3>Opciones de Reconexión</h3>
+
+                    <!-- Alerta de Deuda -->
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Atención:</strong>
+                        <p>Cliente con <span id="mesesAtrasadosAlert"></span> mes(es) de atraso.</p>
+                    </div>
+
+                    <!-- Tarjetas de Opciones -->
+                    <div class="opciones-cards">
+                        <!-- Opción Parcial 80% -->
+                        <div class="opcion-card" id="opcionParcial">
+                            <div class="opcion-header">
+                                <h4>💰 Opción Parcial</h4>
+                                <span class="badge badge-info">80% de deuda</span>
+                            </div>
+                            <div class="opcion-body">
+                                <div class="monto-detalle">
+                                    <span>Deuda a pagar:</span>
+                                    <strong id="montoParcialDeuda">Q0.00</strong>
+                                </div>
+                                <div class="monto-detalle">
+                                    <span>Costo reconexión:</span>
+                                    <strong>Q125.00</strong>
+                                </div>
+                                <div class="monto-detalle">
+                                    <span>Saldo pendiente:</span>
+                                    <strong id="saldoParcialPendiente">Q0.00</strong>
+                                </div>
+                                <hr>
+                                <div class="monto-total">
+                                    <span>Total a Pagar:</span>
+                                    <strong id="totalParcial">Q0.00</strong>
+                                </div>
+                            </div>
+                            <button class="btn-opcion" onclick="reconexionManager.seleccionarOpcion('parcial')">
+                                Seleccionar Opción Parcial
+                            </button>
+                        </div>
+
+                        <!-- Opción Total 100% -->
+                        <div class="opcion-card destacada" id="opcionTotal">
+                            <div class="opcion-header">
+                                <h4>✅ Opción Total</h4>
+                                <span class="badge badge-success">100% de deuda</span>
+                            </div>
+                            <div class="opcion-body">
+                                <div class="monto-detalle">
+                                    <span>Deuda completa:</span>
+                                    <strong id="montoTotalDeuda">Q0.00</strong>
+                                </div>
+                                <div class="monto-detalle">
+                                    <span>Costo reconexión:</span>
+                                    <strong>Q125.00</strong>
+                                </div>
+                                <div class="monto-detalle success">
+                                    <span>Saldo pendiente:</span>
+                                    <strong>Q0.00</strong>
+                                </div>
+                                <hr>
+                                <div class="monto-total">
+                                    <span>Total a Pagar:</span>
+                                    <strong id="totalTotal">Q0.00</strong>
+                                </div>
+                            </div>
+                            <button class="btn-opcion destacado" onclick="reconexionManager.seleccionarOpcion('total')">
+                                Seleccionar Opción Total
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel de Formulario de Pago (oculto inicialmente) -->
+                <div id="formularioPago" class="pago-section hidden">
+                    <h3>Procesar Pago de Reconexión</h3>
+
+                    <div class="resumen-pago">
+                        <div class="resumen-item">
+                            <span>Opción Seleccionada:</span>
+                            <strong id="opcionSeleccionadaTexto"></strong>
+                        </div>
+                        <div class="resumen-item">
+                            <span>Monto a Pagar:</span>
+                            <strong id="montoAPagarTexto" class="monto-destacado"></strong>
+                        </div>
+                    </div>
+
+                    <form id="formPago" onsubmit="reconexionManager.procesarPago(event)">
+                        <!-- Método de Pago -->
+                        <div class="form-group">
+                            <label for="metodoPago">Método de Pago:</label>
+                            <select id="metodoPago" name="metodoPago" required class="form-control">
+                                <option value="">-- Seleccionar --</option>
+                                <option value="efectivo">💵 Efectivo</option>
+                                <option value="transferencia">🏦 Transferencia Bancaria</option>
+                                <option value="deposito">💳 Depósito</option>
+                                <option value="cheque">📄 Cheque</option>
+                            </select>
+                        </div>
+
+                        <!-- Monto (readonly - calculado automáticamente) -->
+                        <div class="form-group">
+                            <label for="monto">Monto Total:</label>
+                            <input type="number" id="monto" name="monto" class="form-control"
+                                   step="0.01" readonly required>
+                        </div>
+
+                        <!-- Referencia (Opcional) -->
+                        <div class="form-group">
+                            <label for="referencia">Referencia / No. de Transacción (Opcional):</label>
+                            <input type="text" id="referencia" name="referencia" class="form-control"
+                                   placeholder="Ej: Transferencia #12345">
+                        </div>
+
+                        <!-- Campos específicos para Cheque (ocultos inicialmente) -->
+                        <div id="camposCheque" class="campos-cheque hidden">
+                            <div class="form-group">
+                                <label for="bancoCheque">Banco:</label>
+                                <input type="text" id="bancoCheque" name="bancoCheque" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="numeroCheque">Número de Cheque:</label>
+                                <input type="text" id="numeroCheque" name="numeroCheque" class="form-control">
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="form-actions">
+                            <button type="button" class="btn-secondary" onclick="reconexionManager.cancelarPago()">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="btn-primary">
+                                💳 Procesar Pago
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
-        </div>
+        </main>
 
         <!-- Loading -->
-        <div id="loading" class="loading">
+        <div id="loadingOverlay" class="loading">
             <div class="spinner"></div>
             <p>Procesando...</p>
         </div>
-
-        <!-- Message Display -->
-        <div id="message" class="message"></div>
     </div>
 
     <!-- Scripts -->

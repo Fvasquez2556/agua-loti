@@ -4,6 +4,9 @@ const Factura = require('../models/factura.model');
 const Cliente = require('../models/cliente.model');
 const mongoose = require('mongoose');
 const ticketPagoService = require('../services/ticketPago.service');
+const ticketFacturaTemporalService = require('../services/ticketFacturaTemporal.service');
+const notificacionesService = require('../services/notificaciones.service');
+const InfileService = require('../services/infile.service');
 
 /**
  * Obtener todos los pagos con filtros opcionales
@@ -306,39 +309,160 @@ exports.registrarPago = async (req, res) => {
       }
     );
 
-    // Generar DTE (Documento Tributario Electrónico)
-    try {
-      await pago.generarDTE();
-    } catch (dteError) {
-      console.error('Error al generar DTE:', dteError);
-      // No fallamos el registro por errores de DTE
-      // El pago se registra pero sin DTE
+    // ========================================
+    // CERTIFICACIÓN FEL DE LA FACTURA (FACT)
+    // ========================================
+    // Al pagar, se certifica la FACTURA como documento fiscal (FACT)
+    let certificacionFEL = null;
+    const infileEnabled = process.env.INFILE_ENABLED === 'true';
+
+    if (infileEnabled) {
+      try {
+        console.log(`📄 Iniciando certificación FEL para factura ${factura.numeroFactura}...`);
+
+        // Poblar datos del cliente para la certificación
+        await factura.populate('clienteId', 'nombres apellidos dpi nit contador lote proyecto direccion correoElectronico');
+
+        // Certificar documento tipo FACT (Factura)
+        const resultado = await InfileService.certificarDocumento('FACT', factura);
+
+        if (resultado.exitoso) {
+          // Actualizar factura con información de certificación
+          factura.fel.certificada = true;
+          factura.fel.uuid = resultado.uuid;
+          factura.fel.numeroAutorizacion = resultado.numeroAutorizacion;
+          factura.fel.serie = resultado.serie;
+          factura.fel.numero = resultado.numero;
+          factura.fel.fechaCertificacion = new Date();
+          factura.fel.xmlCertificado = resultado.xmlCertificado;
+          factura.fel.tipoDocumento = 'FACT';
+
+          await factura.save();
+
+          certificacionFEL = {
+            certificada: true,
+            uuid: resultado.uuid,
+            numeroAutorizacion: resultado.numeroAutorizacion,
+            mensaje: 'Factura certificada exitosamente con FEL'
+          };
+
+          console.log(`✅ Factura certificada FEL: ${resultado.uuid}`);
+        } else {
+          // Registrar intento fallido
+          factura.fel.intentosFallidos = (factura.fel.intentosFallidos || 0) + 1;
+          factura.fel.ultimoError = resultado.mensaje || 'Error desconocido';
+          await factura.save();
+
+          certificacionFEL = {
+            certificada: false,
+            mensaje: resultado.mensaje,
+            detalles: resultado.detalles
+          };
+
+          console.error(`❌ Error en certificación FEL: ${resultado.mensaje}`);
+        }
+      } catch (felError) {
+        // Registrar error en el intento de certificación
+        factura.fel.intentosFallidos = (factura.fel.intentosFallidos || 0) + 1;
+        factura.fel.ultimoError = felError.message;
+        await factura.save();
+
+        certificacionFEL = {
+          certificada: false,
+          mensaje: 'Error al intentar certificar con FEL',
+          error: felError.message
+        };
+
+        console.error('❌ Excepción en certificación FEL:', felError);
+      }
+    } else {
+      console.log('ℹ️ Certificación FEL deshabilitada (INFILE_ENABLED=false)');
+      certificacionFEL = {
+        certificada: false,
+        mensaje: 'Certificación FEL deshabilitada en configuración'
+      };
     }
 
-    // Generar ticket automáticamente
+    // ========================================
+    // ELIMINAR TICKET TEMPORAL DE LA FACTURA
+    // ========================================
+    try {
+      const resultadoEliminar = await ticketFacturaTemporalService.eliminarTicketTemporal(facturaId);
+      if (resultadoEliminar.exitoso) {
+        console.log('🗑️ Ticket temporal eliminado correctamente');
+      } else {
+        console.warn(`⚠️ ${resultadoEliminar.mensaje}`);
+      }
+    } catch (eliminarError) {
+      console.error('❌ Error al eliminar ticket temporal:', eliminarError);
+      // No fallar el registro del pago si falla la eliminación del ticket temporal
+    }
+
+    // ========================================
+    // GENERAR TICKET DE PAGO OFICIAL
+    // ========================================
+    let ticketPago = null;
     try {
       const ticketResultado = await ticketPagoService.generarTicketPago(pago._id);
 
       if (ticketResultado.exitoso) {
-        console.log('✅ Ticket generado:', ticketResultado.nombreArchivo);
+        console.log('✅ Ticket de pago generado:', ticketResultado.nombreArchivo);
+        ticketPago = {
+          generado: true,
+          rutaArchivo: ticketResultado.rutaArchivo,
+          nombreArchivo: ticketResultado.nombreArchivo
+        };
       } else {
         console.warn('⚠️ No se pudo generar el ticket:', ticketResultado.mensaje);
+        ticketPago = {
+          generado: false,
+          mensaje: ticketResultado.mensaje
+        };
       }
     } catch (ticketError) {
       console.error('❌ Error al generar ticket automáticamente:', ticketError);
-      // No fallar la creación del pago si el ticket falla
+      ticketPago = {
+        generado: false,
+        mensaje: ticketError.message
+      };
     }
 
-    // Obtener el pago completo para la respuesta
+    // Obtener el pago completo para la respuesta y notificaciones
     const pagoCompleto = await Pago.findById(pago._id)
-      .populate('clienteId', 'nombres apellidos contador proyecto')
+      .populate('clienteId', 'nombres apellidos contador proyecto correoElectronico whatsapp')
       .populate('facturaId', 'numeroFactura fechaEmision fechaVencimiento')
       .populate('registradoPor', 'nombres apellidos');
+
+    // ========================================
+    // ENVIAR NOTIFICACIONES DE CONFIRMACIÓN
+    // ========================================
+    let notificaciones = null;
+    try {
+      // Usar el ticket de pago como adjunto si se generó correctamente
+      const rutaPDF = ticketPago?.generado ? ticketPago.rutaArchivo : null;
+
+      const resultadosNotificaciones = await notificacionesService.notificarPagoRecibido(
+        pagoCompleto.clienteId,
+        pagoCompleto,
+        rutaPDF
+      );
+
+      notificaciones = resultadosNotificaciones;
+    } catch (notifError) {
+      console.error('❌ Error enviando confirmación de pago:', notifError);
+      notificaciones = {
+        error: 'No se pudieron enviar las notificaciones',
+        detalles: notifError.message
+      };
+    }
 
     res.status(201).json({
       success: true,
       message: 'Pago registrado exitosamente',
-      data: pagoCompleto
+      data: pagoCompleto,
+      certificacionFEL: certificacionFEL,
+      ticketPago: ticketPago,
+      notificaciones: notificaciones
     });
 
   } catch (error) {
