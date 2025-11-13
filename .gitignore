@@ -48,6 +48,33 @@ backend/uploads/facturas-temporales/**/*.pdf
 !backend/uploads/tickets/.gitkeep
 !backend/uploads/facturas-temporales/.gitkeep
 
+# Archivos de Electron y desarrollo
+electron-main.js
+electron-preload.js
+build/
+dist/
+out/
+installer-scripts/
+scripts/
+*.nsh
+
+# Archivos de análisis y logs temporales
+ANALISIS_SIMPLE.txt
+COMO-VER-ERROR-BSOD.txt
+RESUMEN_PROBLEMAS.txt
+SNIPPETS.txt
+UBICACIONES_EXACTAS.txt
+app-error-log.txt
+app-error-log.txt.err
+app-error-log.txt.out
+nul
+
+# Archivos de documentación de Electron
+OPCIONES_EJECUTABLE.md
+README-ELECTRON.md
+
+# Configuración de Claude
+.claude/
 # Sesiones de WhatsApp (contienen datos sensibles)
 whatsapp-sessions/
 .wwebjs_auth/
