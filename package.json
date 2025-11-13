@@ -9,7 +9,7 @@
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
     "electron": "electron .",
-    "electron-dev": "NODE_ENV=development electron .",
+    "electron-dev": "electron .",
     "crear-admin": "node backend/createAdmin.js",
     "init-facturacion": "node backend/scripts/initFacturacion.js",
     "init-facturacion-test": "node backend/scripts/initFacturacion.js --test-data",
@@ -57,17 +57,16 @@
       "electron-preload.js",
       "package.json",
       ".env.example",
-      "!node_modules/**/*",
-      "!.git/**/*",
-      "!dist/**/*"
+      "installer-scripts/**/*"
+    ],
+    "asarUnpack": [
+      "backend/**/*"
     ],
     "extraResources": [
       {
-        "from": "node_modules",
-        "to": "node_modules",
-        "filter": [
-          "**/*"
-        ]
+        "from": "installer-scripts",
+        "to": "installer-scripts",
+        "filter": ["**/*"]
       }
     ],
     "win": {
@@ -89,8 +88,11 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Sistema Agua LOTI",
       "perMachine": false,
-      "runAfterFinish": true,
-      "deleteAppDataOnUninstall": false
+      "runAfterFinish": false,
+      "deleteAppDataOnUninstall": false,
+      "displayLanguageSelector": true,
+      "include": "build/installer.nsh",
+      "allowElevation": true
     },
     "mac": {
       "target": [

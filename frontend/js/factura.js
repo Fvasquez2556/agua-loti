@@ -20,11 +20,11 @@ const RECARGO_EXCEDENTE = 0.075; // 7.5% recargo en excedentes
 const MORA_MENSUAL = 0.07; // 7% mora mensual
 const COSTO_RECONEXION = 125.00; // Q125.00 reconexión
 
-// URLs de la API
-const API_BASE_URL = 'http://localhost:5000/api';
-const API_CLIENTES_URL = `${API_BASE_URL}/clientes`;
-const API_FACTURAS_URL = `${API_BASE_URL}/facturas`; // ✅ Nueva URL para facturas
-const API_LECTURAS_URL = `${API_BASE_URL}/lecturas`; // ✅ Nueva URL para lecturas
+// URLs de la API - Usando configuración dinámica
+const getApiUrl = (endpoint) => window.AppConfig ? window.AppConfig.getApiUrl(endpoint) : `${window.location.origin}${endpoint}`;
+const API_CLIENTES_URL = getApiUrl('/api/clientes');
+const API_FACTURAS_URL = getApiUrl('/api/facturas');
+const API_LECTURAS_URL = getApiUrl('/api/lecturas');
 
 /**
  * Función para mostrar mensajes al usuario - USA PageUtils del sistema centralizado
@@ -1015,8 +1015,8 @@ async function initializeApp() {
         }
         
         // Debug autenticación (solo en desarrollo)
-        debugAuthentication();
-        
+        await debugAuthentication();
+
         // Inicializar valores por defecto
         initializeDefaults();
         
@@ -1042,9 +1042,9 @@ window.closeConfirmModal = closeConfirmModal;
 window.confirmGenerateInvoice = confirmGenerateInvoice;
 
 // Debugging function para verificar autenticación
-function debugAuthentication() {
-    const token = auth.getToken();
-    const userData = auth.getUserData();
+async function debugAuthentication() {
+    const token = await auth.getToken();
+    const userData = await auth.getUserData();
     
     console.log('🔍 Debug Autenticación:', {
         hasToken: !!token,

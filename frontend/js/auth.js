@@ -10,59 +10,123 @@ class AuthManager {
     constructor() {
         this.tokenKey = 'auth_token';
         this.userKey = 'user_data';
+
+        // Detectar si estamos en Electron
+        // En Electron, usar IPC para almacenamiento seguro en el proceso principal
+        // En navegador web, usar sessionStorage para mayor seguridad
+        this.isElectron = typeof window !== 'undefined' &&
+                          typeof window.electronAPI !== 'undefined' &&
+                          window.electronAPI.isElectron === true;
+
+        // Determinar qué storage usar (solo para fallback)
+        this.storage = this.isElectron ? localStorage : sessionStorage;
+
+        console.log(`🔐 AuthManager inicializado`);
+        console.log(`   Entorno: ${this.isElectron ? 'Electron' : 'Navegador Web'}`);
+        console.log(`   Storage: ${this.isElectron ? 'IPC Electron (proceso principal)' : 'sessionStorage (se borra al cerrar)'}`);
     }
 
     /**
-     * Guardar token en sessionStorage (se borra al cerrar navegador)
+     * Guardar token en storage (IPC en Electron, sessionStorage en web)
      * @param {string} token - JWT token
      * @param {object} userData - Datos del usuario (opcional)
      */
-    saveToken(token, userData = null) {
-        sessionStorage.setItem(this.tokenKey, token);
-        if (userData) {
-            sessionStorage.setItem(this.userKey, JSON.stringify(userData));
+    async saveToken(token, userData = null) {
+        if (this.isElectron) {
+            // En Electron, usar IPC para guardar en el proceso principal
+            try {
+                await window.electronAPI.saveAuthData(token, userData);
+                console.log('✅ Token guardado en proceso principal de Electron');
+            } catch (error) {
+                console.error('❌ Error guardando token en Electron:', error);
+                // Fallback a localStorage
+                this.storage.setItem(this.tokenKey, token);
+                if (userData) {
+                    this.storage.setItem(this.userKey, JSON.stringify(userData));
+                }
+            }
+        } else {
+            // En navegador web, usar sessionStorage
+            this.storage.setItem(this.tokenKey, token);
+            if (userData) {
+                this.storage.setItem(this.userKey, JSON.stringify(userData));
+            }
+            console.log('✅ Token guardado correctamente');
         }
     }
 
     /**
-     * Obtener token del sessionStorage
-     * @returns {string|null} Token o null si no existe
+     * Obtener token del storage
+     * @returns {Promise<string|null>} Token o null si no existe
      */
-    getToken() {
-        return sessionStorage.getItem(this.tokenKey);
+    async getToken() {
+        if (this.isElectron) {
+            // En Electron, obtener del proceso principal
+            try {
+                const token = await window.electronAPI.getAuthToken();
+                return token;
+            } catch (error) {
+                console.error('❌ Error obteniendo token de Electron:', error);
+                // Fallback a localStorage
+                return this.storage.getItem(this.tokenKey);
+            }
+        } else {
+            // En navegador web, usar sessionStorage
+            return this.storage.getItem(this.tokenKey);
+        }
     }
 
     /**
      * Obtener datos del usuario
-     * @returns {object|null} Datos del usuario o null
+     * @returns {Promise<object|null>} Datos del usuario o null
      */
-    getUserData() {
-        const userData = sessionStorage.getItem(this.userKey);
-        return userData ? JSON.parse(userData) : null;
+    async getUserData() {
+        if (this.isElectron) {
+            // En Electron, obtener del proceso principal
+            try {
+                const userData = await window.electronAPI.getUserData();
+                return userData;
+            } catch (error) {
+                console.error('❌ Error obteniendo datos de usuario de Electron:', error);
+                // Fallback a localStorage
+                const userData = this.storage.getItem(this.userKey);
+                return userData ? JSON.parse(userData) : null;
+            }
+        } else {
+            // En navegador web, usar sessionStorage
+            const userData = this.storage.getItem(this.userKey);
+            return userData ? JSON.parse(userData) : null;
+        }
     }
 
     /**
      * Verificar si el usuario está autenticado
-     * @returns {boolean} true si está autenticado
+     * @returns {Promise<boolean>} true si está autenticado
      */
-    isAuthenticated() {
-        const token = this.getToken();
-        if (!token) return false;
+    async isAuthenticated() {
+        const token = await this.getToken();
+
+        if (!token) {
+            console.log('⚠️ No hay token de autenticación');
+            return false;
+        }
 
         try {
             // Verificar si el token ha expirado (opcional)
             const payload = JSON.parse(atob(token.split('.')[1]));
             const currentTime = Date.now() / 1000;
-            
+
             if (payload.exp && payload.exp < currentTime) {
-                this.logout();
+                console.log('⚠️ Token expirado');
+                await this.logout();
                 return false;
             }
-            
+
+            console.log('✅ Token válido');
             return true;
         } catch (error) {
-            console.error('Error verificando token:', error);
-            this.logout();
+            console.error('❌ Error verificando token:', error);
+            await this.logout();
             return false;
         }
     }
@@ -70,30 +134,55 @@ class AuthManager {
     /**
      * Cerrar sesión y limpiar datos
      */
-    logout() {
+    async logout() {
+        if (this.isElectron) {
+            // En Electron, limpiar del proceso principal
+            try {
+                await window.electronAPI.clearAuthData();
+                console.log('🚪 Sesión cerrada (Electron IPC)');
+            } catch (error) {
+                console.error('❌ Error limpiando datos en Electron:', error);
+            }
+        }
+
+        // Limpiar del storage local también (por compatibilidad)
+        this.storage.removeItem(this.tokenKey);
+        this.storage.removeItem(this.userKey);
+
+        // Limpiar de ambos storages por si acaso (compatibilidad con versiones anteriores)
         sessionStorage.removeItem(this.tokenKey);
         sessionStorage.removeItem(this.userKey);
-        // También limpiar localStorage por si acaso
-        localStorage.removeItem('token');
-        localStorage.removeItem('user_data');
+        localStorage.removeItem(this.tokenKey);
+        localStorage.removeItem(this.userKey);
+        localStorage.removeItem('token'); // Legacy
+        localStorage.removeItem('user_data'); // Legacy
+
+        console.log('🚪 Sesión cerrada y datos limpiados');
     }
 
     /**
      * Redirigir a login si no está autenticado
      */
-    requireAuth() {
-        if (!this.isAuthenticated()) {
+    async requireAuth() {
+        console.log('🔒 Verificando autenticación...');
+
+        const isAuth = await this.isAuthenticated();
+        if (!isAuth) {
+            console.log('🚫 Usuario no autenticado, redirigiendo a login...');
             window.location.href = 'login.html';
             return false;
         }
+
+        console.log('✅ Usuario autenticado correctamente');
         return true;
     }
 
     /**
      * Redirigir a main page si ya está autenticado
      */
-    redirectIfAuthenticated() {
-        if (this.isAuthenticated()) {
+    async redirectIfAuthenticated() {
+        const isAuth = await this.isAuthenticated();
+        if (isAuth) {
             window.location.href = 'mainPage.html';
             return true;
         }
@@ -116,7 +205,12 @@ const AuthUtils = {
      */
     async login(username, password) {
         try {
-            const response = await fetch("http://localhost:5000/api/auth/login", {
+            // Usar ruta relativa para que funcione en cualquier puerto
+            const apiUrl = window.AppConfig
+                ? window.AppConfig.getApiUrl('/api/auth/login')
+                : '/api/auth/login';
+
+            const response = await fetch(apiUrl, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password }),
@@ -129,7 +223,7 @@ const AuthUtils = {
             }
 
             // Guardar token en sessionStorage
-            auth.saveToken(data.token, data.user);
+            await auth.saveToken(data.token, data.user);
             return true;
 
         } catch (error) {
@@ -148,10 +242,10 @@ const AuthUtils = {
 
     /**
      * Obtener headers con autorización para requests
-     * @returns {object} Headers con token
+     * @returns {Promise<object>} Headers con token
      */
-    getAuthHeaders() {
-        const token = auth.getToken();
+    async getAuthHeaders() {
+        const token = await auth.getToken();
         return {
             'Content-Type': 'application/json',
             'Authorization': token ? `Bearer ${token}` : ''
@@ -165,8 +259,9 @@ const AuthUtils = {
      * @returns {Promise<Response>} Response del fetch
      */
     async authenticatedFetch(url, options = {}) {
+        const authHeaders = await this.getAuthHeaders();
         const headers = {
-            ...this.getAuthHeaders(),
+            ...authHeaders,
             ...options.headers
         };
 
@@ -177,7 +272,7 @@ const AuthUtils = {
 
         // Si el token ha expirado o es inválido
         if (response.status === 401) {
-            auth.logout();
+            await auth.logout();
             window.location.href = 'login.html';
             throw new Error('Sesión expirada');
         }

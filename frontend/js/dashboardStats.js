@@ -79,7 +79,7 @@ class DashboardStats {
             this.isLoading = true;
             this.showLoadingState();
 
-            const token = auth.getToken();
+            const token = await auth.getToken();
             if (!token) {
                 console.warn('No hay token de autenticación');
                 this.redirectToLogin();
@@ -676,7 +676,7 @@ class DashboardStats {
      * Realizar request autenticado
      */
     async authenticatedFetch(url, options = {}) {
-        const token = auth.getToken();
+        const token = await auth.getToken();
         if (!token) {
             throw new Error('No hay token de autenticación');
         }
@@ -787,8 +787,8 @@ class DashboardStats {
         }, 3000);
     }
 
-    redirectToLogin() {
-        auth.logout();
+    async redirectToLogin() {
+        await auth.logout();
         window.location.href = 'login.html';
     }
 

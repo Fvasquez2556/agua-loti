@@ -8,7 +8,7 @@ let clientesPriorizados = [];
 
 class ReconexionManager {
     constructor() {
-        this.API_BASE = 'http://localhost:5000/api';
+        this.API_BASE = window.location.origin + '/api';
         this.currentClienteId = null;
         this.currentCliente = null;
         this.opcionesReconexion = null;

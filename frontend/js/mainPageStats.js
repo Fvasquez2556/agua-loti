@@ -52,7 +52,7 @@ class MainPageStats {
             this.showLoadingState();
 
             // Usar AuthManager para obtener el token
-            const token = auth.getToken();
+            const token = await auth.getToken();
             if (!token) {
                 console.warn('No hay token de autenticación');
                 this.redirectToLogin();
@@ -315,8 +315,8 @@ class MainPageStats {
     /**
      * Redirigir al login
      */
-    redirectToLogin() {
-        auth.logout(); // Usar AuthManager para logout limpio
+    async redirectToLogin() {
+        await auth.logout(); // Usar AuthManager para logout limpio
         window.location.href = 'login.html';
     }
 

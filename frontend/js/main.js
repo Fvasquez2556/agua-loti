@@ -3,9 +3,10 @@
  * Maneja el formulario de login con sessionStorage
  */
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Verificar si ya está autenticado al cargar la página de login
-    if (auth.redirectIfAuthenticated()) {
+    const redirected = await auth.redirectIfAuthenticated();
+    if (redirected) {
         return; // Sale de la función si ya está autenticado
     }
 
@@ -177,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
 /**
  * Limpiar cualquier token residual al cargar la página de login
  */
-window.addEventListener('load', function() {
+window.addEventListener('load', async function() {
     // Usar AuthManager para limpiar correctamente
-    auth.logout();
+    await auth.logout();
 });

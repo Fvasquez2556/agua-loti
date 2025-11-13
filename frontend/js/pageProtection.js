@@ -3,14 +3,15 @@
  * Debe incluirse en todas las páginas que requieren autenticación
  */
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // Verificar autenticación inmediatamente al cargar la página
-    if (!auth.requireAuth()) {
+    const isAuth = await auth.requireAuth();
+    if (!isAuth) {
         return; // Si no está autenticado, ya se redirige al login
     }
 
     // Mostrar información del usuario si está disponible
-    displayUserInfo();
+    await displayUserInfo();
 
     // Configurar botón de logout
     setupLogoutButton();
@@ -22,17 +23,17 @@ document.addEventListener('DOMContentLoaded', function() {
 /**
  * Mostrar información del usuario en la página
  */
-function displayUserInfo() {
-    const userData = auth.getUserData();
+async function displayUserInfo() {
+    const userData = await auth.getUserData();
     if (userData) {
         // Buscar elementos donde mostrar info del usuario
         const userNameElement = document.getElementById('userName');
         const userRoleElement = document.getElementById('userRole');
-        
+
         if (userNameElement && userData.username) {
             userNameElement.textContent = userData.username;
         }
-        
+
         if (userRoleElement && userData.role) {
             userRoleElement.textContent = userData.role;
         }
@@ -192,8 +193,9 @@ function showLogoutMessage() {
 /**
  * Verificar validez del token periódicamente
  */
-function checkTokenValidity() {
-    if (!auth.isAuthenticated()) {
+async function checkTokenValidity() {
+    const isAuth = await auth.isAuthenticated();
+    if (!isAuth) {
         alert('Tu sesión ha expirado. Serás redirigido al login.');
         AuthUtils.logout();
     }
@@ -212,7 +214,7 @@ const PageUtils = {
     async apiRequest(endpoint, options = {}) {
         try {
             const response = await AuthUtils.authenticatedFetch(
-                `http://localhost:5000/api${endpoint}`,
+                window.AppConfig.getApiUrl(endpoint),
                 options
             );
 
@@ -334,10 +336,11 @@ const PageUtils = {
 };
 
 // Event listener para detectar cambios de pestaña
-document.addEventListener('visibilitychange', function() {
+document.addEventListener('visibilitychange', async function() {
     if (document.visibilityState === 'visible') {
         // Verificar token cuando el usuario regresa a la pestaña
-        if (!auth.isAuthenticated()) {
+        const isAuth = await auth.isAuthenticated();
+        if (!isAuth) {
             AuthUtils.logout();
         }
     }

@@ -111,7 +111,7 @@ let searchTimeout;
 // ===============================================
 // CONSTANTES DEL SISTEMA
 // ===============================================
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = window.location.origin + '/api';
 const MORA_MENSUAL = 0.07; // 7% mora mensual
 const COSTO_RECONEXION = 125.00; // Q125.00 reconexión
 
@@ -150,7 +150,7 @@ class MoraManager {
      */
     async checkBackendConnection() {
         try {
-            const response = await fetch('http://localhost:5000/api/test');
+            const response = await fetch(API_BASE + '/test');
             const data = await response.json();
             console.log('✅ Conexión con backend establecida:', data.message);
             return true;
@@ -222,7 +222,7 @@ class MoraManager {
 
                 // Manejar error 401
                 if (response.status === 401) {
-                    sessionStorage.removeItem('auth_token');
+                    await auth.logout();
                     this.showMessage('Sesión expirada. Redirigiendo al login...', 'error');
                     setTimeout(() => {
                         window.location.href = 'login.html';
@@ -233,12 +233,20 @@ class MoraManager {
                 return response;
             }
 
-            // Fallback manual
-            const token = sessionStorage.getItem('auth_token');
+            // Fallback manual usando sistema centralizado
+            const token = await auth.getToken();
+
+            if (!token) {
+                this.showMessage('No hay token de autenticación', 'error');
+                await auth.logout();
+                window.location.href = 'login.html';
+                throw new Error('No autenticado');
+            }
+
             const defaultOptions = {
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token && { 'Authorization': `Bearer ${token}` })
+                    'Authorization': `Bearer ${token}`
                 }
             };
 
@@ -252,8 +260,11 @@ class MoraManager {
             });
 
             if (response.status === 401) {
-                sessionStorage.removeItem('auth_token');
-                window.location.href = 'login.html';
+                this.showMessage('Sesión expirada. Redirigiendo al login...', 'error');
+                await auth.logout();
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 1500);
                 throw new Error('Sesión expirada');
             }
 

@@ -20,16 +20,16 @@ let totalRecords = 0;
 
 // Constantes del sistema
 const MORA_MENSUAL = 0.07; // 7% mora mensual
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = window.location.origin;
 
 // URLs de la API
 const API_ENDPOINTS = {
-    clientes: `${API_BASE_URL}/clientes`,
-    pagos: `${API_BASE_URL}/pagos`,
-    facturas: `${API_BASE_URL}/facturas`,
-    facturasPendientes: `${API_BASE_URL}/pagos/facturas-pendientes`,
-    resumenPendientes: `${API_BASE_URL}/pagos/facturas-pendientes/resumen`,
-    historialPagos: `${API_BASE_URL}/pagos/historial`
+    clientes: `${API_BASE_URL}/api/clientes`,
+    pagos: `${API_BASE_URL}/api/pagos`,
+    facturas: `${API_BASE_URL}/api/facturas`,
+    facturasPendientes: `${API_BASE_URL}/api/pagos/facturas-pendientes`,
+    resumenPendientes: `${API_BASE_URL}/api/pagos/facturas-pendientes/resumen`,
+    historialPagos: `${API_BASE_URL}/api/pagos/historial`
 };
 
 /**
@@ -51,12 +51,20 @@ function showMessage(text, type) {
  */
 async function apiRequest(url, options = {}) {
     try {
-        const token = sessionStorage.getItem('auth_token');
-        
+        // Usar el sistema de autenticación centralizado
+        const token = await auth.getToken();
+
+        if (!token) {
+            console.warn('⚠️ No hay token disponible');
+            await auth.logout();
+            window.location.href = 'login.html';
+            throw new Error('No autenticado');
+        }
+
         const defaultOptions = {
             headers: {
                 'Content-Type': 'application/json',
-                ...(token && { 'Authorization': `Bearer ${token}` })
+                'Authorization': `Bearer ${token}`
             }
         };
 
@@ -70,7 +78,8 @@ async function apiRequest(url, options = {}) {
         });
 
         if (response.status === 401) {
-            sessionStorage.removeItem('auth_token');
+            console.warn('⚠️ Token expirado o inválido (401)');
+            await auth.logout();
             window.location.href = 'login.html';
             throw new Error('Sesión expirada');
         }
@@ -883,7 +892,12 @@ async function viewPaymentDetails(pagoId) {
  */
 async function descargarTicketPago(pagoId) {
     try {
-        const token = sessionStorage.getItem('auth_token');
+        // Usar el sistema de autenticación centralizado
+        const token = await auth.getToken();
+
+        if (!token) {
+            throw new Error('No hay token de autenticación');
+        }
 
         const response = await fetch(`${API_ENDPOINTS.pagos}/${pagoId}/ticket`, {
             method: 'GET',
@@ -1201,7 +1215,7 @@ async function initializeApp() {
  */
 async function checkManageInvoicesButton() {
     try {
-        const response = await apiRequest(`${API_BASE_URL}/facturas/admin/status`);
+        const response = await apiRequest(`${API_BASE_URL}/api/facturas/admin/status`);
         const data = await response.json();
 
         const btnManage = document.getElementById('btnManageInvoices');

@@ -9,11 +9,12 @@
  * - Generar lotes de facturas de prueba
  */
 
-// URLs de la API - usar variables existentes si ya están definidas
-const ADMIN_API_BASE_URL = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'http://localhost:5000/api';
-const ADMIN_API_ADMIN_BASE = 'http://localhost:5000/api/facturas/admin';
-const ADMIN_API_CLIENTES_URL = typeof API_CLIENTES_URL !== 'undefined' ? API_CLIENTES_URL : 'http://localhost:5000/api/clientes';
-const ADMIN_API_FACTURAS_URL = typeof API_FACTURAS_URL !== 'undefined' ? API_FACTURAS_URL : 'http://localhost:5000/api/facturas';
+// URLs de la API - usar configuración dinámica
+const getAdminApiUrl = (endpoint) => window.AppConfig ? window.AppConfig.getApiUrl(endpoint) : `${window.location.origin}${endpoint}`;
+const ADMIN_API_BASE_URL = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : getAdminApiUrl('/api');
+const ADMIN_API_ADMIN_BASE = getAdminApiUrl('/api/facturas/admin');
+const ADMIN_API_CLIENTES_URL = typeof API_CLIENTES_URL !== 'undefined' ? API_CLIENTES_URL : getAdminApiUrl('/api/clientes');
+const ADMIN_API_FACTURAS_URL = typeof API_FACTURAS_URL !== 'undefined' ? API_FACTURAS_URL : getAdminApiUrl('/api/facturas');
 
 /**
  * Verificar estado de las funciones administrativas al cargar la página

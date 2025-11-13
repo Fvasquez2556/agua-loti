@@ -6,7 +6,7 @@
 // Variables globales
 let clientes = [];
 let editingClientId = null;
-const API_BASE_URL = 'http://localhost:5000/api/clientes';
+const API_BASE_URL = window.AppConfig ? window.AppConfig.getApiUrl('/api/clientes') : `${window.location.origin}/api/clientes`;
 
 /**
  * Función para mostrar mensajes al usuario
@@ -494,7 +494,8 @@ function setupEventListeners() {
  */
 async function checkBackendConnection() {
     try {
-        const response = await fetch('http://localhost:5000/api/test');
+        const testUrl = window.AppConfig ? window.AppConfig.getApiUrl('/api/test') : `${window.location.origin}/api/test`;
+        const response = await fetch(testUrl);
         const data = await response.json();
         console.log('✅ Conexión con backend establecida:', data.message);
         return true;
